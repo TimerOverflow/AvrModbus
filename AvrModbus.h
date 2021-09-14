@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20200703
+#define AVR_MODBUS_REVISION_DATE				20200804
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2020. 08. 04.					- Slave파트 시작주소 범위를 벗어나 호출하거나 쓰기 명령이 있을 경우 에러 리턴하도록 수정.
+	Jeong Hyun Gu					-	Slave파트 시작번지가 200 미만일 경우 정상 응답하지 않는 부분 수정.
+
 	2020. 07. 03.					- Slave파트 AVR_MODBUS_ReadSerialNumber (0x73)펑션 마스터가 요청하는 길이 부분은 무시하고,
 	Jeong Hyun Gu						연결 되어 있는 프로그램명 문자열 길이로 응답.
 												- Master파트 AvrModbusMasterSetSlavePollFunction() 삭제. 앞으로 PollFunction은 AvrModbusMasterAddSlave(),
@@ -116,7 +119,7 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			true
+#define	AVR_MODBUS_MASTER			false
 #define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US							20000
