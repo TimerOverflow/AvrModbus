@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20170322)
+#if(AVR_MODBUS_REVISION_DATE != 20170726)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -246,6 +246,7 @@ char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *U
 		Slave->Uart = Uart;
 		Slave->BaseAddr = BaseAddr;
 		Slave->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / SlaveProcTick_us;
+		if(Slave->Uart->ReceivingDelay < 2) Slave->Uart->ReceivingDelay = 2;
 
 		Slave->Bit.InitGeneral = true;
 	}
@@ -335,6 +336,8 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 	{
 		return;
 	}
+
+	AvrUartFixTxEnableFloating(Slave->Uart);
 
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
@@ -571,7 +574,7 @@ char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl
 	Master->Tick_us = MasterProcTick_us;
 	Master->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / Master->Tick_us;
 	Master->PollDelay = AVR_MODBUS_DEFAULT_POLLING_DELAY_US / Master->Tick_us;
-	if(Master->Uart->ReceivingDelay == 0) Master->Uart->ReceivingDelay = 2;
+	if(Master->Uart->ReceivingDelay < 2) Master->Uart->ReceivingDelay = 2;
 
 	Master->Bit.InitGeneral = ((Master->Uart == null) || (Master->SlaveArray == null)) ? false : true;
 	Master->Bit.InitComplete = CheckAllOfMasterInit(Master);
