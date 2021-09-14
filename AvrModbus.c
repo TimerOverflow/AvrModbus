@@ -9,6 +9,10 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
+#if(AVR_MODBUS_REVISION_DATE != 20161108)
+#error wrong include file. (AvrModbus.h)
+#endif
+/*********************************************************************************/
 /** Global variable **/
 
 
