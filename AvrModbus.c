@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20200804)
+#if(AVR_MODBUS_REVISION_DATE != 20200909)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -71,7 +71,7 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
-	tU16 StartAddr, NumberOfPoint, Crc16, i;
+	tU16 StartAddr, NumberOfPoint, Crc16, i, MapStartAddr;
 	tU8 *BaseAddr;
 
 	/*
@@ -87,14 +87,15 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 
 	StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
 	NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+	MapStartAddr = StartAddr == 0 ? 0 : Slave->MapStartAddr;
 
-	if(StartAddr < Slave->MapStartAddr)
+	if(StartAddr < MapStartAddr)
 	{
 		ErrorException(Slave, 2);
 	}
 	else
 	{
-		StartAddr -= Slave->MapStartAddr;
+		StartAddr -= MapStartAddr;
 		NumberOfPoint *= 2;
 		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + StartAddr);
 		
@@ -187,7 +188,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
-	tU16 StartAddr, NumberOfRegister, Crc16, Length, i, j = 7;
+	tU16 StartAddr, NumberOfRegister, Crc16, Length, MapStartAddr, i, j = 7;
 	tU8 *BaseAddr;
 
 	/*
@@ -203,8 +204,9 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 
 	StartAddr = (RxQue->Buf[2] << 8) + RxQue->Buf[3];
 	NumberOfRegister = (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+	MapStartAddr = StartAddr == 0 ? 0 : Slave->MapStartAddr;
 
-	if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true)) || (StartAddr < Slave->MapStartAddr))
+	if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true)) || (StartAddr < MapStartAddr))
 	{
 		ErrorException(Slave, 2);
 	}
@@ -212,7 +214,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	{
 		Length = NumberOfRegister * 2;
 		Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
-		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + (StartAddr - Slave->MapStartAddr));
+		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + (StartAddr - MapStartAddr));
 
 		for(i = 0; i < Length; i += 2)
 		{
