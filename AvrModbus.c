@@ -9,7 +9,7 @@
 #include "include/AvrModbus.h"
 #include "include/crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20161226)
+#if(AVR_MODBUS_REVISION_DATE != 20170102)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -316,11 +316,6 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 			- Slave 동작을 처리함.
 			- AvrModbusSlaveGeneralInit() 함수에서 설정한 'SlaveProcTick_us'과 동일한 주기로 본 함수 실행.
 	*/
-
-	if((Slave->Uart->Bit.DataSend == false) && (*Slave->Uart->pEnablePort & (1 << Slave->Uart->EnablePin)))
-	{
-		*Slave->Uart->pEnablePort &= ~(1 << Slave->Uart->EnablePin);
-	}
 
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
