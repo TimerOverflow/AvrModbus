@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20190507
+#define AVR_MODBUS_REVISION_DATE				20190828
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2019. 08. 28.					- AvrModbusSlaveSetMapStartAddr() 추가.
+	Jeong Hyun Gu					- Slave파트 CustomFrameCheck 추가.
+
 	2019. 05. 07.					- Master파트 슬레이브 호출 펑션 AVR_MODBUS_ReadInput(0x04) 지원 추가.
 	Jeong Hyun Gu					- AvrModbusMasterSetSlavePollFunction() 추가.
 
@@ -121,7 +124,6 @@ typedef enum
 /*********************************************************************************/
 /**Struct**/
 
-
 #if(AVR_MODBUS_SLAVE == true)
 
 typedef struct tag_AvrModbusSlaveCtrl
@@ -132,7 +134,7 @@ typedef struct tag_AvrModbusSlaveCtrl
 		char InitCheckOutRange		:		1;
 		char InitUserException		:		1;
 		char InitPreUserException	:		1;
-
+		char InitCustomFrameCheck	:		1;
 		char InitComplete					:		1;
 	}Bit;
 
@@ -140,7 +142,10 @@ typedef struct tag_AvrModbusSlaveCtrl
 	char (*CheckOutRange)(int StartAddr, int NumberOfRegister);
 	void (*UserException)(int StartAddr, int NumberOfRegister);
 	char (*PreUserException)(struct tag_AvrModbusSlaveCtrl *Slave, unsigned char *SlaveId);
+	int	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, int Ctr);
+	
 	char *BaseAddr;
+	unsigned int MapStartAddr;
 }tag_AvrModbusSlaveCtrl;
 
 #endif
@@ -203,6 +208,8 @@ char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *U
 char AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, char (*CheckRange)(int StartAddr, int NumberOfRegister));
 char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*UserException)(int StartAddr, int NumberOfRegister));
 char AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, char (*PreUserException)(tag_AvrModbusSlaveCtrl *Slave, unsigned char *SlaveId));
+char AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, unsigned int MapStartAddr);
+char AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, int	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, int Ctr));
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId);
 
 #endif
