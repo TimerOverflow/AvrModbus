@@ -9,10 +9,15 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20201020
+#define AVR_MODBUS_REVISION_DATE				20210318
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2021. 03. 18.					- Master파트 tag_AvrModbusMasterSlavePollData는 AvrModbusMasterAddSlave(), AvrModbusMasterAddSlavePollData() 호출할 때
+	Jeong Hyun Gu						할당 하게 되어 있는데, Master Init 시점에서 메모리 동적할당 성공여부를 확인할 수 없음.
+													AvrModbusMasterAddSlavePollData()는 보통 잘 사용하지 않으므로 AvrModbusMasterGeneralInit() 시점에서 미리 1개의 tag_AvrModbusMasterSlavePollData를
+													할당하여 Init시점에서 메모리 할당 성공여부 확인할 수있도록 변경.
+
 	2020. 10. 20.					- 2020. 07. 03에서 수정한 내용 AvrModbusMasterAddSlave()에서 사용자가 설정한 PollFunction이
 	Jeong Hyun Gu						반영되지 않고 AVR_MODBUS_ReadHolding로 설정되는 문제 수정.
 
@@ -125,7 +130,7 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			true
+#define	AVR_MODBUS_MASTER			false
 #define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US							20000
