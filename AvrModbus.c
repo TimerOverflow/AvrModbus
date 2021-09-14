@@ -6,10 +6,10 @@
 /*********************************************************************************/
 #include <stdlib.h>
 #include <string.h>
-#include "include/AvrModbus.h"
-#include "include/crc16.h"
+#include "AvrModbus.h"
+#include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20170102)
+#if(AVR_MODBUS_REVISION_DATE != 20170224)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -39,6 +39,7 @@ static char CheckAllOfSlaveInit(tag_AvrModbusSlaveCtrl *Slave)
 static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, char ErrCode)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
 	unsigned int Crc16;
 
 	/*
@@ -53,10 +54,10 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, char ErrCode)
 			- Master의 요청에 문제가 있을 때 지정한 에러코드를 응답함.
 	*/
 
-	if(AvrUartViewRxBuf(Slave->Uart, 0) != 0)
+	if(RxQue->Buf[0] != 0)
 	{
-		AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 0));
-		AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 1) | 0x80);
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[1] | 0x80);
 		AvrUartPutChar(Slave->Uart, ErrCode);
 
 		Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
@@ -70,8 +71,9 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, char ErrCode)
 static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
 	unsigned int StartAddr, NumberOfPoint, Crc16, i;
-	char *TargetData;
+	char *BaseAddr;
 
 	/*
 		1) 인수
@@ -84,21 +86,21 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 			- Master의 'ReadHolding' 명령에 대한 처리.
 	*/
 
-	StartAddr = (int) (AvrUartViewRxBuf(Slave->Uart, 2) << 8) + AvrUartViewRxBuf(Slave->Uart, 3);
-	NumberOfPoint = (int) (AvrUartViewRxBuf(Slave->Uart, 4) << 8) + AvrUartViewRxBuf(Slave->Uart, 5);
+	StartAddr = (int) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+	NumberOfPoint = (int) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
 	StartAddr = (StartAddr < 200) ? 0 : StartAddr - 200;
 	NumberOfPoint *= 2;
-	TargetData = (char *) (((int *) Slave->TargetData) + StartAddr);
+	BaseAddr = (char *) (((int *) Slave->BaseAddr) + StartAddr);
 
-	AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 0));		//Slave Address
-	AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 1));		//Function
-	AvrUartPutChar(Slave->Uart, NumberOfPoint);												//Byte Count
+	AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
+	AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
+	AvrUartPutChar(Slave->Uart, NumberOfPoint);		//Byte Count
 
 	for(i = 0; i < NumberOfPoint; i += 2)
 	{
-		AvrUartPutChar(Slave->Uart, *(TargetData + i + 1));
-		AvrUartPutChar(Slave->Uart, *(TargetData + i));
+		AvrUartPutChar(Slave->Uart, *(BaseAddr + i + 1));
+		AvrUartPutChar(Slave->Uart, *(BaseAddr + i));
 	}
 
 	Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
@@ -111,7 +113,8 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
-	int RegisterAddr, PresetData, *TargetData;
+	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
+	int RegisterAddr, PresetData, *BaseAddr;
 	unsigned int Crc16;
 
 	/*
@@ -125,8 +128,8 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 			- Master의 'PresetSingle' 명령에 대한 처리.
 	*/
 
-	RegisterAddr = (int) (AvrUartViewRxBuf(Slave->Uart, 2) << 8) + AvrUartViewRxBuf(Slave->Uart, 3);
-	PresetData = (int) (AvrUartViewRxBuf(Slave->Uart, 4) << 8) + AvrUartViewRxBuf(Slave->Uart, 5);
+	RegisterAddr = (int) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+	PresetData = (int) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
 	if((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true))
 	{
@@ -134,22 +137,22 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 	}
 	else
 	{
-		TargetData = ((int *) Slave->TargetData) + ((RegisterAddr < 200) ? 0 : RegisterAddr - 200);
-		*TargetData = PresetData;
+		BaseAddr = ((int *) Slave->BaseAddr) + ((RegisterAddr < 200) ? 0 : RegisterAddr - 200);
+		*BaseAddr = PresetData;
 
 		if(Slave->Bit.InitUserException == true)
 		{
 			Slave->UserException(RegisterAddr, 1);
 		}
 
-		if(AvrUartViewRxBuf(Slave->Uart, 0) != 0)
+		if(RxQue->Buf[0] != 0)
 		{
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 0));		//Slave Address
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 1));		//Function
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 2));		//Register Address Hi
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 3));		//Register Address Lo
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 4));		//Preset Data Hi
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 5));		//Preset Data Lo
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[2]);		//Register Address Hi
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[3]);		//Register Address Lo
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[4]);		//Preset Data Hi
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[5]);		//Preset Data Lo
 
 			Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
 
@@ -163,8 +166,9 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 {
 	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
 	unsigned int StartAddr, NumberOfRegister, Crc16, Length, i, j = 7;
-	char *TargetData;
+	char *BaseAddr;
 
 	/*
 		1) 인수
@@ -177,8 +181,8 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 			- Master의 'PresetMultiple' 명령에 대한 처리.
 	*/
 
-	StartAddr = (AvrUartViewRxBuf(Slave->Uart, 2) << 8) + AvrUartViewRxBuf(Slave->Uart, 3);
-	NumberOfRegister = (AvrUartViewRxBuf(Slave->Uart, 4) << 8) + AvrUartViewRxBuf(Slave->Uart, 5);
+	StartAddr = (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+	NumberOfRegister = (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
 	if((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true))
 	{
@@ -188,12 +192,12 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	{
 		Length = NumberOfRegister *= 2;
 		Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
-		TargetData = (char *) (((int *) Slave->TargetData) + ((StartAddr < 200) ? 0 : StartAddr - 200));
+		BaseAddr = (char *) (((int *) Slave->BaseAddr) + ((StartAddr < 200) ? 0 : StartAddr - 200));
 
 		for(i = 0; i < Length; i += 2)
 		{
-			*(TargetData + i + 1) = AvrUartViewRxBuf(Slave->Uart, j++);
-			*(TargetData + i) = AvrUartViewRxBuf(Slave->Uart, j++);
+			*(BaseAddr + i + 1) = RxQue->Buf[j++];
+			*(BaseAddr + i) = RxQue->Buf[j++];
 		}
 
 		if(Slave->Bit.InitUserException == true)
@@ -201,14 +205,14 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 			Slave->UserException(StartAddr, NumberOfRegister);
 		}
 
-		if(AvrUartViewRxBuf(Slave->Uart, 0) != 0)
+		if(RxQue->Buf[0] != 0)
 		{
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 0));
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 1));
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 2));
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 3));
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 4));
-			AvrUartPutChar(Slave->Uart, AvrUartViewRxBuf(Slave->Uart, 5));
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[2]);
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[3]);
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[4]);
+			AvrUartPutChar(Slave->Uart, RxQue->Buf[5]);
 
 			Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
 
@@ -219,13 +223,13 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	}
 }
 /*********************************************************************************/
-char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Uart, char *TargetData, long SlaveProcTick_us)
+char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Uart, char *BaseAddr, long SlaveProcTick_us)
 {
 	/*
 		1) 인수
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
 			- Uart : tag_AvrUartCtrl 인스턴스의 주소.
-			- TargetData : Slave와 연결되는 데이터의 주소. Master의 명령을 수행할 때 응답 또는 적용의 대상이 되는 데이터.
+			- BaseAddr : Slave와 연결되는 데이터의 주소. Master의 명령을 수행할 때 응답 또는 적용의 대상이 되는 데이터.
 			- SlaveProcTick_us : AvrModbusSlaveProc() 함수를 실행하는 주기.
 
 		2) 반환
@@ -240,7 +244,7 @@ char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *U
 	if(Uart->Bit.InitComplete == true)
 	{
 		Slave->Uart = Uart;
-		Slave->TargetData = TargetData;
+		Slave->BaseAddr = BaseAddr;
 		Slave->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / SlaveProcTick_us;
 
 		Slave->Bit.InitGeneral = true;
@@ -319,13 +323,13 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
-		if((AvrUartViewRxBuf(Slave->Uart, 0) == SlaveAddr ) || (AvrUartViewRxBuf(Slave->Uart, 0) == 0) || (AvrUartViewRxBuf(Slave->Uart, 0) == 255))
+		if((RxQue->Buf[0] == SlaveAddr ) || (RxQue->Buf[0] == 0) || (RxQue->Buf[0] == 255))
 		{
 			Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 
-			if((AvrUartViewRxBuf(Slave->Uart, RxQue->Ctr - 2) == (Crc16 >> 8)) && (AvrUartViewRxBuf(Slave->Uart, RxQue->Ctr - 1) == (Crc16 & 0x00FF)))
+			if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 			{
-				switch(AvrUartViewRxBuf(Slave->Uart, 1))
+				switch(RxQue->Buf[1])
 				{
 					case	AVR_MODBUS_ReadHolding	:
 						SlaveReadHolding(Slave);
@@ -371,7 +375,7 @@ static char CheckAllOfMasterInit(tag_AvrModbusMasterCtrl *Master)
 			- 'tag_AvrModbusMasterCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
 	*/
 
-	return (Master->Bit.InitGeneral && Master->Bit.InitPollDelay) ? true : false;
+	return (Master->Bit.InitGeneral) ? true : false;
 }
 /*********************************************************************************/
 static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *Master, tag_AvrModbusMasterSlaveInfo *Slave)
@@ -428,7 +432,7 @@ static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Mast
 		  - 인수로 받은 Id에 해당하는 Slave의 주소.
 
 		3) 설명
-			- 추가 되어 있느 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
+			- 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
 	*/
 
 	for(i = 0; i < Master->AddedSlave; i++)
@@ -461,7 +465,8 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 	*/
 
 	Master->SlavePoll = GetAddedSlaveInfo(Master, Master->SlavePoll);
-	if(Master->SlavePoll->NoResponseCnt < AVR_MODBUS_SLAVE_NO_RESPONSE)
+
+	if(Master->SlavePoll->NoResponseCnt < Master->SlavePoll->NoResponseLimit)
 	{
 		Master->SlavePoll->NoResponseCnt++;
 	}
@@ -484,6 +489,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 {
 	unsigned int Crc16, Length, i, j = 3;
 	tag_AvrUartRingBuf *RxQue = &Master->Uart->RxQueue;
+	tag_AvrModbusMasterSlaveInfo *Slave;
 
 	/*
 		1) 인수
@@ -496,21 +502,26 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 			- Slave의 ReadHolding 응답을 처리함.
 	*/
 
-	Master->SlaveReceive = FindSlaveById(Master, AvrUartViewRxBuf(Master->Uart, 0));
+	Slave = FindSlaveById(Master, RxQue->Buf[0]);
 
-	if(Master->SlaveReceive != null)
+	if((Slave != null) && (RxQue->Buf[1] == AVR_MODBUS_ReadHolding))
 	{
 		Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 
-		if((AvrUartViewRxBuf(Master->Uart, RxQue->Ctr - 2) == (Crc16 >> 8)) && (AvrUartViewRxBuf(Master->Uart, RxQue->Ctr - 1) == (Crc16 & 0x00FF)))
+		if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 		{
-			Master->SlaveReceive->NoResponseCnt = 0;
-			Length = Master->SlaveReceive->NumberOfRegister * 2;
+			Slave->NoResponseCnt = 0;
 
+			Length = Slave->NumberOfRegister * 2;
 			for(i = 0; i < Length; i += 2)
 			{
-				*(Master->SlaveReceive->TargetData + i + 1) = AvrUartViewRxBuf(Master->Uart, j++);
-				*(Master->SlaveReceive->TargetData + i) = AvrUartViewRxBuf(Master->Uart, j++);
+				*(Slave->BaseAddr + i + 1) = RxQue->Buf[j++];
+				*(Slave->BaseAddr + i) = RxQue->Buf[j++];
+			}
+
+			if(Master->Bit.InitRxUserException == true)
+			{
+				Master->UserException(Slave->Id);
 			}
 		}
 	}
@@ -542,7 +553,9 @@ char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl
 	Master->SlaveArray = (tag_AvrModbusMasterSlaveInfo *) calloc(MaxSlave, sizeof(tag_AvrModbusMasterSlaveInfo));
 	Master->MaxSlave = MaxSlave;
 	Master->Status = AVR_MODBUS_ReadHolding;
-	Master->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / MasterProcTick_us;
+	Master->Tick_us = MasterProcTick_us;
+	Master->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / Master->Tick_us;
+	Master->PollDelay = AVR_MODBUS_DEFAULT_POLLING_DELAY_US / Master->Tick_us;
 	if(Master->Uart->ReceivingDelay == 0) Master->Uart->ReceivingDelay = 2;
 
 	Master->Bit.InitGeneral = ((Master->Uart == null) || (Master->SlaveArray == null)) ? false : true;
@@ -551,13 +564,12 @@ char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl
 	return Master->Bit.InitGeneral;
 }
 /*********************************************************************************/
-char AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, long PollDelay_us, long MasterProcTick_us)
+char AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, long PollDelay_us)
 {
 	/*
 		1) 인수
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
 			- PollDelay_us : Master가 Slave를 Polling할 주기.
-			- MasterProcTick_us : AvrModbusMasterProc() 함수를 실행하는 주기.
 
 		2) 반환
 		  - 0 : 초기화 실패
@@ -567,15 +579,16 @@ char AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, long PollDe
 			- Master의 Slave Polling 주기 설정.
 	*/
 
-	Master->PollDelay = PollDelay_us / MasterProcTick_us;
+	if(Master->Bit.InitComplete == false)
+	{
+		return false;
+	}
 
-	Master->Bit.InitPollDelay = true;
-	Master->Bit.InitComplete = CheckAllOfMasterInit(Master);
-
-	return Master->Bit.InitPollDelay;
+	Master->PollDelay = PollDelay_us / Master->Tick_us;
+	return true;
 }
 /*********************************************************************************/
-char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *TargetData)
+char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *BaseAddr)
 {
 	char i;
 	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
@@ -586,7 +599,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 			- Id : 추가할 Slave의 ID
 			- StartAddr : 추가할 Slave의 StartAddr
 			- NumberOfRegister : 추가할 Slave의 레지스터 갯수.
-			- TargetData : 추가할 Slave와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 TargetData에 대입.
+			- BaseAddr : 추가할 Slave와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
 
 		2) 반환
 		  - 0 : 초기화 실패
@@ -596,12 +609,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 			- Master가 관리할 Slave 추가.
 	*/
 
-	if(Master->Bit.InitComplete == false)
-	{
-		return false;
-	}
-
-	if(Master->AddedSlave >= Master->MaxSlave)
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave >= Master->MaxSlave))
 	{
 		return false;
 	}
@@ -622,7 +630,9 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 			Master->SlaveArray[i].Id = Id;
 			Master->SlaveArray[i].StartAddr = StartAddr;
 			Master->SlaveArray[i].NumberOfRegister = NumberOfRegister;
-			Master->SlaveArray[i].TargetData = TargetData;
+			Master->SlaveArray[i].BaseAddr = BaseAddr;
+			Master->SlaveArray[i].NoResponseCnt = 0;
+			Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
 
 			Master->SlaveReceive = Master->SlavePoll = &Master->SlaveArray[i];
 			Master->AddedSlave++;
@@ -661,6 +671,64 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char I
 		memset(Slave, 0, sizeof(tag_AvrModbusMasterSlaveInfo));
 		Master->AddedSlave--;
 	}
+}
+/*********************************************************************************/
+void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned char Id, unsigned char NoResponseLimit)
+{
+	tag_AvrModbusMasterSlaveInfo *Slave = null;
+
+	/*
+		1) 인수
+			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+			- Id : Slave의 ID.
+			- NoResponseLimit : 무응답 횟수.
+
+		2) 반환
+		  - 없음.
+
+		3) 설명
+			- 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave의 무응답 횟수 설정.
+	*/
+
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
+	{
+		return;
+	}
+
+	Slave = FindSlaveById(Master, Id);
+
+	if(Slave != null)
+	{
+		Slave->NoResponseLimit = NoResponseLimit;
+		Slave->NoResponseCnt = 0;
+	}
+}
+/*********************************************************************************/
+char AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*UserException)(unsigned char Id))
+{
+	/*
+		1) 인수
+			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+			- UserException : 사용자 정의 함수의 주소.
+
+		2) 반환
+		  - 0 : 연결 실패
+			- 1 : 연결 성공
+
+		3) 설명
+			- 사용자 정의 함수 연결.
+			- Slave가 Master 호출에 정상적으로 응답했을 때 데이터 수신 처리 후 본 함수 호출.
+	*/
+
+	if(Master->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
+	Master->UserException = UserException;
+	Master->Bit.InitRxUserException = true;
+
+	return Master->Bit.InitRxUserException;
 }
 /*********************************************************************************/
 void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
@@ -754,7 +822,7 @@ char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char 
 	return true;
 }
 /*********************************************************************************/
-char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int StartAddr, int NumberOfRegister, char *TargetData)
+char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int StartAddr, int NumberOfRegister, char *BaseAddr)
 {
 	unsigned int Crc16, i;
 	tag_AvrUartRingBuf *TxQue = &Master->Uart->TxQueue;
@@ -765,7 +833,7 @@ char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned cha
 			- SlaveId : 명령을 전달할 Slave의 ID
 			- StartAddr : 시작 주소.
 			- NumberOfRegister : 레지스터의 갯수.
-			- TargetData : PresetMultiple 요청할 데이터 버퍼의 주소.
+			- BaseAddr : PresetMultiple 요청할 데이터 버퍼의 주소.
 
 		2) 반환
 		  - 0 : 요청 실패
@@ -794,8 +862,8 @@ char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned cha
 
 	for(i = 0; i < NumberOfRegister; i += 2)
 	{
-		AvrUartPutChar(Master->Uart, *(TargetData + i + 1));
-		AvrUartPutChar(Master->Uart, *(TargetData + i));
+		AvrUartPutChar(Master->Uart, *(BaseAddr + i + 1));
+		AvrUartPutChar(Master->Uart, *(BaseAddr + i));
 	}
 
 	Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
@@ -830,7 +898,7 @@ char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsign
 
 	Slave = FindSlaveById(Master, Id);
 
-	if((Slave != null) && (Slave->NoResponseCnt >= AVR_MODBUS_SLAVE_NO_RESPONSE))
+	if((Slave != null) && (Slave->NoResponseCnt >= Slave->NoResponseLimit))
 	{
 		return true;
 	}
