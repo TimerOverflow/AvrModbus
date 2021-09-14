@@ -1,6 +1,6 @@
 /*********************************************************************************/
 /*
- * Author : Jung Hyun Gu
+ * Author : Jeong Hyun Gu
  * File name : AvrModbus.c
 */
 /*********************************************************************************/
@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20170224)
+#if(AVR_MODBUS_REVISION_DATE != 20170322)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -273,6 +273,11 @@ char AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, char (*Chec
 			  함수를 구현할 경우 정상 범위일 때 0, 비정상 범위 일 때에는 1을 응답도록 해야 함.
 	*/
 
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
 	Slave->CheckOutRange = CheckOutRange;
 	Slave->Bit.InitCheckOutRange = true;
 
@@ -297,6 +302,11 @@ char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*U
 			  RTC 제어 관련 함수를 호출하거나, 에러해제 시 관련 카운트 변수를 초기화 하는 등의 동작을 구현함.
 	*/
 
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
 	Slave->UserException = UserException;
 	Slave->Bit.InitUserException = true;
 
@@ -320,6 +330,11 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 			- Slave 동작을 처리함.
 			- AvrModbusSlaveGeneralInit() 함수에서 설정한 'SlaveProcTick_us'과 동일한 주기로 본 함수 실행.
 	*/
+
+	if(Slave->Bit.InitComplete == false)
+	{
+		return;
+	}
 
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
@@ -800,7 +815,7 @@ char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char 
 			- 인수로 받은 SlaveId에 PresetSingle 명령을 보냄.
 	*/
 
-	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->Status != AVR_MODBUS_ReadHolding))
 	{
 		return false;
 	}
@@ -843,7 +858,7 @@ char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned cha
 			- 인수로 받은 SlaveId에 PresetMultiple 명령을 보냄.
 	*/
 
-	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->Status != AVR_MODBUS_ReadHolding))
 	{
 		return false;
 	}
