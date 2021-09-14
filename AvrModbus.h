@@ -9,10 +9,15 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20161121
+#define AVR_MODBUS_REVISION_DATE				20161207
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2016. 12. 07.					- 'AvrUart' 모듈의 'enum_AvrUartMoveDirection' 타입 삭제와 관련된 부분 수정.
+	Jung Hyun Gu					- 'AvrUart' 모듈의 'AvrUartClearRx' 함수 삭제와 관련된 부분 수정.
+												- 'enum_AvrModbusDirection' 타입 삭제.
+												- 주석 추가.
+
 	2016. 11. 21.					- Master파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple() 함수에서
 	Jung Hyun Gu						Master->Status를 핸들링 하지 않던 부분 수정.
 
@@ -37,8 +42,8 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			true
-#define	AVR_MODBUS_SLAVE			false
+#define	AVR_MODBUS_MASTER			false
+#define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US			50000
 #define AVR_MODBUS_SLAVE_NO_RESPONSE			20
@@ -53,13 +58,6 @@ typedef enum
 	AVR_MODBUS_PresetMultiple = 0x10,
 	
 }enum_AvrModbusFunction;
-
-typedef enum
-{
-	AVR_MODBUS_Next = 0,
-	AVR_MODBUS_Prev,
-	
-}enum_AvrModbusDirection;
 
 /*********************************************************************************/
 /**Struct**/
