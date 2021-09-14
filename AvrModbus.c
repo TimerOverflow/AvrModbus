@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20180906)
+#if(AVR_MODBUS_REVISION_DATE != 20181023)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -439,7 +439,7 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
 {
 	unsigned char i, Find = false;
-	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
+	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlavePoll;
 
 	/*
 		1) 인수
@@ -632,7 +632,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 		return false;
 	}
 
-	for(i = 0; i < Master->AddedSlave; i++)
+	for(i = 0; i < Master->MaxSlave; i++)
 	{
 		if(Slave->Id == Id)
 		{

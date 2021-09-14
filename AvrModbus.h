@@ -9,10 +9,19 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20180906
+#define AVR_MODBUS_REVISION_DATE				20181023
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2018. 10. 23.					- Master파트 AvrModbusMasterAddSlave()함수에서 중복 ID 검색수량
+	Jeong Hyun Gu						tag_AvrModbusMasterCtrl::AddedSlave -> tag_AvrModbusMasterCtrl::MaxSlave 변경.
+													tag_AvrModbusMasterCtrl::SlaveArray에서 추가된 Slave보다 앞쪽 배열이 비어 있는 경우
+													중복 추가 되는 현상 수정.
+												- Master파트 FindSlaveById()함수에서 지역변수 Slave의 초기 값
+													tag_AvrModbusMasterCtrl::SlaveArray -> tag_AvrModbusMasterCtrl::SlavePoll 변경.
+													tag_AvrModbusMasterCtrl::SlaveArray에서 제거하고자 하는 Slave가 tag_AvrModbusMasterCtrl::AddedSlave
+													보다 뒤쪽에 위치할 경우 제거 되지 않던 현상 수정.
+
 	2018. 09. 06.					- Slave파트 AVR_MODBUS_PresetMultiple 커맨드 처리에서
 	Jeong Hyun Gu						tag_AvrModbusSlaveCtrl :: UserException() 함수의 NumberOfRegister인자가
 													2배 큰 값으로 전달 되던 현상 수정.
