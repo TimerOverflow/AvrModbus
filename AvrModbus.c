@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20190416)
+#if(AVR_MODBUS_REVISION_DATE != 20190507)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -506,7 +506,7 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 	PollData = &Master->SlavePoll->PollData[Master->SlavePoll->PollDataIndex];
 
 	AvrUartPutChar(Master->Uart, Master->SlavePoll->Id);
-	AvrUartPutChar(Master->Uart, AVR_MODBUS_ReadHolding);
+	AvrUartPutChar(Master->Uart, Master->SlavePoll->PollFunction);
 	AvrUartPutChar(Master->Uart, (PollData->StartAddr >> 8));
 	AvrUartPutChar(Master->Uart, (PollData->StartAddr & 0x00FF));
 	AvrUartPutChar(Master->Uart, (PollData->NumberOfRegister >> 8));
@@ -539,7 +539,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 
 	Slave = AvrModbusMasterFindSlaveById(Master, RxQue->Buf[0]);
 
-	if((Slave != null) && (RxQue->Buf[1] == AVR_MODBUS_ReadHolding))
+	if((Slave != null) && (RxQue->Buf[1] == Slave->PollFunction))
 	{
 		Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 
@@ -674,6 +674,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 				Master->SlaveArray[i].NoResponseCnt = 0;
 				Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
 				Master->SlaveArray[i].PollDataMax = 1;
+				Master->SlaveArray[i].PollFunction = AVR_MODBUS_ReadHolding;
 				Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
 				Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
 				Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
@@ -813,6 +814,36 @@ void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned
 	{
 		Slave->NoResponseLimit = NoResponseLimit;
 		Slave->NoResponseCnt = 0;
+	}
+}
+/*********************************************************************************/
+void AvrModbusMasterSetSlavePollFunction(tag_AvrModbusMasterCtrl *Master, unsigned char Id, enum_AvrModbusFunction PollFunction)
+{
+	tag_AvrModbusMasterSlaveInfo *Slave = null;
+
+	/*
+		1) 인수
+			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+			- Id : Slave의 ID.
+			- PollFunction : 호출 펑션.
+
+		2) 반환
+			- 없음.
+
+		3) 설명
+			- 슬레이브 호출 펑션 변경.
+	*/
+
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || ((PollFunction != AVR_MODBUS_ReadHolding) && (PollFunction != AVR_MODBUS_ReadInput)))
+	{
+		return;
+	}
+
+	Slave = AvrModbusMasterFindSlaveById(Master, Id);
+
+	if(Slave != null)
+	{
+		Slave->PollFunction = PollFunction;
 	}
 }
 /*********************************************************************************/

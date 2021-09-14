@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20190416
+#define AVR_MODBUS_REVISION_DATE				20190507
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2019. 05. 07.					- Master파트 슬레이브 호출 펑션 AVR_MODBUS_ReadInput(0x04) 지원 추가.
+	Jeong Hyun Gu					- AvrModbusMasterSetSlavePollFunction() 추가.
+
 	2019. 04. 16.					- Slave파트 AvrModbusSlaveProc()함수에서 CRC에러 코드 응답할 때 유효한 펑션코드가 수신 되었는지 검사 추가.
 	Jeong Hyun Gu						(프레임 인식에 오류 발견, A슬레이브 응답 중 B슬레이브가 ID패킷을 수신하지 못 하고 우연히 B슬레이브를 호출하는 것으로 인식하여
 													동작. 결과적으로 B슬레이브가 CRC에러 응답을 하여 정상응답 패킷과 프레임 충돌 발생. 근본적인 원인 파악이 필요하나 시간관계상
@@ -110,6 +113,7 @@
 typedef enum
 {
 	AVR_MODBUS_ReadHolding = 0x03,
+	AVR_MODBUS_ReadInput = 0x04,
 	AVR_MODBUS_PresetSingle = 0x06,
 	AVR_MODBUS_PresetMultiple = 0x10,
 }enum_AvrModbusFunction;
@@ -157,6 +161,7 @@ typedef struct
 	unsigned char NoResponseLimit;
 	unsigned char PollDataIndex;
 	unsigned char PollDataMax;
+	enum_AvrModbusFunction PollFunction;
 	tag_AvrModbusMasterSlavePollData *PollData;
 }tag_AvrModbusMasterSlaveInfo;
 
@@ -211,6 +216,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 char AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *BaseAddr);
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id);
 void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned char Id, unsigned char NoResponseLimit);
+void AvrModbusMasterSetSlavePollFunction(tag_AvrModbusMasterCtrl *Master, unsigned char Id, enum_AvrModbusFunction PollFunction);
 char AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*UserException)(unsigned char Id));
 
 void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master);
