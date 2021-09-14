@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20170726)
+#if(AVR_MODBUS_REVISION_DATE != 20171227)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -54,7 +54,7 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, char ErrCode)
 			- Master의 요청에 문제가 있을 때 지정한 에러코드를 응답함.
 	*/
 
-	if(RxQue->Buf[0] != 0)
+	if((RxQue->Buf[0] != 0) && (RxQue->Buf[0] != 255))
 	{
 		AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);
 		AvrUartPutChar(Slave->Uart, RxQue->Buf[1] | 0x80);
