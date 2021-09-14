@@ -9,10 +9,14 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20171227
+#define AVR_MODBUS_REVISION_DATE				20180906
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2018. 09. 06.					- Slave파트 AVR_MODBUS_PresetMultiple 커맨드 처리에서
+	Jeong Hyun Gu						tag_AvrModbusSlaveCtrl :: UserException() 함수의 NumberOfRegister인자가
+													2배 큰 값으로 전달 되던 현상 수정.
+
 	2017. 12. 27.					- ErrorException() Id가 0xFF일 경우 에러를 응답하지 않음.
 	Jeong Hyun Gu
 
