@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20190110)
+#if(AVR_MODBUS_REVISION_DATE != 20190319)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -429,7 +429,7 @@ static char CheckAllOfMasterInit(tag_AvrModbusMasterCtrl *Master)
 			- 'tag_AvrModbusMasterCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
 	*/
 
-	return (Master->Bit.InitGeneral) ? true : false;
+	return (Master->Bit.InitGeneral && (Master->Bit.PollDataAllocFail == false)) ? true : false;
 }
 /*********************************************************************************/
 static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *Master, tag_AvrModbusMasterSlaveInfo *Slave)
@@ -475,6 +475,7 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 {
 	tag_AvrUartRingBuf *TxQue = &Master->Uart->TxQueue;
+	tag_AvrModbusMasterSlavePollData *PollData;
 	unsigned int Crc16;
 
 	/*
@@ -488,19 +489,25 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 			- Slave Polling을 수행함.
 	*/
 
-	Master->SlavePoll = GetAddedSlaveInfo(Master, Master->SlavePoll);
+	if(++Master->SlavePoll->PollDataIndex >= Master->SlavePoll->PollDataMax)
+	{
+		Master->SlavePoll->PollDataIndex = 0;
+		Master->SlavePoll = GetAddedSlaveInfo(Master, Master->SlavePoll);
+	}
 
 	if(Master->SlavePoll->NoResponseCnt < Master->SlavePoll->NoResponseLimit)
 	{
 		Master->SlavePoll->NoResponseCnt++;
 	}
+	
+	PollData = &Master->SlavePoll->PollData[Master->SlavePoll->PollDataIndex];
 
 	AvrUartPutChar(Master->Uart, Master->SlavePoll->Id);
 	AvrUartPutChar(Master->Uart, AVR_MODBUS_ReadHolding);
-	AvrUartPutChar(Master->Uart, (Master->SlavePoll->StartAddr >> 8));
-	AvrUartPutChar(Master->Uart, (Master->SlavePoll->StartAddr & 0x00FF));
-	AvrUartPutChar(Master->Uart, (Master->SlavePoll->NumberOfRegister >> 8));
-	AvrUartPutChar(Master->Uart, (Master->SlavePoll->NumberOfRegister & 0x00FF));
+	AvrUartPutChar(Master->Uart, (PollData->StartAddr >> 8));
+	AvrUartPutChar(Master->Uart, (PollData->StartAddr & 0x00FF));
+	AvrUartPutChar(Master->Uart, (PollData->NumberOfRegister >> 8));
+	AvrUartPutChar(Master->Uart, (PollData->NumberOfRegister & 0x00FF));
 
 	Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
 
@@ -513,6 +520,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 {
 	unsigned int Crc16, Length, i, j = 3;
 	tag_AvrUartRingBuf *RxQue = &Master->Uart->RxQueue;
+	tag_AvrModbusMasterSlavePollData *PollData;
 	tag_AvrModbusMasterSlaveInfo *Slave;
 
 	/*
@@ -535,12 +543,12 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 		if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 		{
 			Slave->NoResponseCnt = 0;
-
-			Length = Slave->NumberOfRegister * 2;
+			PollData = &Slave->PollData[Slave->PollDataIndex];
+			Length = PollData->NumberOfRegister * 2;
 			for(i = 0; i < Length; i += 2)
 			{
-				*(Slave->BaseAddr + i + 1) = RxQue->Buf[j++];
-				*(Slave->BaseAddr + i) = RxQue->Buf[j++];
+				*(PollData->BaseAddr + i + 1) = RxQue->Buf[j++];
+				*(PollData->BaseAddr + i) = RxQue->Buf[j++];
 			}
 
 			if(Master->Bit.InitRxUserException == true)
@@ -651,20 +659,96 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 	{
 		if(Master->SlaveArray[i].Id == 0)
 		{
-			Master->SlaveArray[i].Id = Id;
-			Master->SlaveArray[i].StartAddr = StartAddr;
-			Master->SlaveArray[i].NumberOfRegister = NumberOfRegister;
-			Master->SlaveArray[i].BaseAddr = BaseAddr;
-			Master->SlaveArray[i].NoResponseCnt = 0;
-			Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
-
-			Master->SlaveReceive = Master->SlavePoll = &Master->SlaveArray[i];
-			Master->AddedSlave++;
-			return true;
+			Master->SlaveArray[i].PollData = (tag_AvrModbusMasterSlavePollData *) calloc(1, sizeof(tag_AvrModbusMasterSlavePollData));
+			if(Master->SlaveArray[i].PollData == null)
+			{
+				Master->Bit.PollDataAllocFail = true;
+				break;
+			}
+			else
+			{
+				Master->SlaveArray[i].Id = Id;
+				Master->SlaveArray[i].NoResponseCnt = 0;
+				Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
+				Master->SlaveArray[i].PollDataMax = 1;
+				Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
+				Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
+				Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
+				Master->SlavePoll = &Master->SlaveArray[i];
+				Master->AddedSlave++;
+				return true;
+			}
 		}
 	}
 
+	Master->Bit.InitComplete = CheckAllOfMasterInit(Master);
 	return false;
+}
+/*********************************************************************************/
+char AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *BaseAddr)
+{
+	char i;
+	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
+	
+	/*
+		1) 인수
+			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+			- Id : 추가할 Slave의 ID
+			- StartAddr : 추가할 PollData의 StartAddr
+			- NumberOfRegister : 추가할 PollData의 레지스터 갯수.
+			- BaseAddr : 추가할 PollData와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
+
+		2) 반환
+			- 0 : 추가 실패
+			- 1 : 추가 성공
+
+		3) 설명
+			- 이미 추가 되어 있는 Slave에 PollData 추가.
+			- PollData는 슬레이브 데이터를 비선형적으로 호출할 필요가 있을 때 추가. 예를 들어 200~210번지, 430~450번지와 같이
+				필요한 데이터의 주소가 인접해 있지 않은 경우 PollData를 추가하여 순차 호출.
+			- 추가 하려는 StartAddr가 이미 추가 되어 있는 값과 같다면 중복이므로 처리 하지 않음.
+			- recommend.
+				Slave1 Add.
+				Slave1 PollData Add.
+				Slave2 Add.
+				Slave2 PollData Add.
+			- not recommend.
+				Slave1 Add.
+				Slave2 Add.
+				Slave1 PollData Add.
+				Slave2 PollData Add.
+	*/
+
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
+	{
+		return false;
+	}
+
+	Slave = AvrModbusMasterFindSlaveById(Master, Id);
+	if((Slave == null) || (Slave->PollDataMax == 0))
+	{
+		return false;
+	}
+	
+	for(i = 0; i < Slave->PollDataMax; i++)
+	{
+		if(Slave->PollData[i].StartAddr == StartAddr) return false;
+	}
+	
+	Slave->PollData = (tag_AvrModbusMasterSlavePollData *) realloc(Slave->PollData, (Slave->PollDataMax + 1) * sizeof(tag_AvrModbusMasterSlavePollData));
+	if(Slave->PollData == null)
+	{
+		Master->Bit.PollDataAllocFail = true;
+		Master->Bit.InitComplete = CheckAllOfMasterInit(Master);
+		return false;
+	}
+	
+	Slave->PollDataMax++;
+	Slave->PollData[Slave->PollDataMax - 1].StartAddr = StartAddr;
+	Slave->PollData[Slave->PollDataMax - 1].NumberOfRegister = NumberOfRegister;
+	Slave->PollData[Slave->PollDataMax - 1].BaseAddr = BaseAddr;
+	
+	return true;
 }
 /*********************************************************************************/
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
@@ -692,6 +776,7 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char I
 
 	if(Slave != null)
 	{
+		free(Slave->PollData);
 		memset(Slave, 0, sizeof(tag_AvrModbusMasterSlaveInfo));
 		Master->AddedSlave--;
 	}
