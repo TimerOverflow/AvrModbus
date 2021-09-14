@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20200909
+#define AVR_MODBUS_REVISION_DATE				20201020
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2020. 10. 20.					- 2020. 07. 03에서 수정한 내용 AvrModbusMasterAddSlave()에서 사용자가 설정한 PollFunction이
+	Jeong Hyun Gu						반영되지 않고 AVR_MODBUS_ReadHolding로 설정되는 문제 수정.
+
 	2020. 09. 09.					- Slave파트 마스터가 시작주소를 0으로 호출하면 tag_AvrModbusSlaveCtrl::MapStartAddr와 상관없이
 	Jeong Hyun Gu						응답하도록 변경. (기존 제품과의 호환성 유지를 위해)
 
@@ -122,7 +125,7 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			false
+#define	AVR_MODBUS_MASTER			true
 #define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US							20000

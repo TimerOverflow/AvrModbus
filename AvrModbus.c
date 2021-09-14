@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20200909)
+#if(AVR_MODBUS_REVISION_DATE != 20201020)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -833,7 +833,7 @@ tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrMod
 				Master->SlaveArray[i].NoResponseCnt = 0;
 				Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
 				Master->SlaveArray[i].PollDataMax = 1;
-				Master->SlaveArray[i].PollData[0].PollFunction = AVR_MODBUS_ReadHolding;
+				Master->SlaveArray[i].PollData[0].PollFunction = PollFunction;
 				Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
 				Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
 				Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
