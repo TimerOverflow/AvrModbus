@@ -9,15 +9,22 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20190110
+#define AVR_MODBUS_REVISION_DATE				20190319
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2019. 03. 19.					-	tag_AvrModbusMasterCtrl::SlaveReceive 삭제.
+	Jeong Hyun Gu					- AvrModbusMasterAddSlavePollData() 추가.
+													이제 마스터는 슬레이브 데이터를 비선형적으로 호출 가능. 예를 들어 200~210번지, 260~280번지등
+													PollData를 추가하여 순차 호출.
+												- tag_AvrModbusMasterCtrl::Bit.PollDataAllocFail를 추가하여 동적 메모리 할당 실패 여부 확인.
+													AvrModbusMasterAddSlave(), AvrModbusMasterAddSlavePollData()호출 후 위 비트 값이 1이면 에러, 0이면 정상.
+
 	2019. 01. 10.					- AvrModbusSlaveProc함수의 인수 SlaveAddr -> SlaveId 변수명 변경.
 	Jeong Hyun Gu					- Slave파트 PreUserException 추가.
 												- Master파트 FindSlaveById함수를 AvrModbusMasterFindSlaveById()로 변경하고
 													public으로 공개.
-													
+
 	2018. 10. 23.					- Master파트 AvrModbusMasterAddSlave()함수에서 중복 ID 검색수량
 	Jeong Hyun Gu						tag_AvrModbusMasterCtrl::AddedSlave -> tag_AvrModbusMasterCtrl::MaxSlave 변경.
 													tag_AvrModbusMasterCtrl::SlaveArray에서 추가된 Slave보다 앞쪽 배열이 비어 있는 경우
@@ -85,7 +92,7 @@
 #define	null		0
 
 #define	AVR_MODBUS_MASTER			true
-#define	AVR_MODBUS_SLAVE			true
+#define	AVR_MODBUS_SLAVE			false
 
 #define AVR_MODBUS_RECEIVING_DELAY_US							50000
 #define AVR_MODBUS_DEFAULT_POLLING_DELAY_US				500000
@@ -132,13 +139,19 @@ typedef struct tag_AvrModbusSlaveCtrl
 
 typedef struct
 {
-	unsigned char Id;
 	int StartAddr;
 	int NumberOfRegister;
 	char *BaseAddr;
+}tag_AvrModbusMasterSlavePollData;
 
+typedef struct
+{
+	unsigned char Id;
 	unsigned char NoResponseCnt;
 	unsigned char NoResponseLimit;
+	unsigned char PollDataIndex;
+	unsigned char PollDataMax;
+	tag_AvrModbusMasterSlavePollData *PollData;
 }tag_AvrModbusMasterSlaveInfo;
 
 typedef struct
@@ -148,6 +161,7 @@ typedef struct
 		char InitGeneral				:		1;
 		char InitRxUserException:		1;
 		char InitComplete				:		1;
+		char PollDataAllocFail	:		1;
 	}Bit;
 
 	tag_AvrUartCtrl *Uart;
@@ -158,7 +172,6 @@ typedef struct
 
 	tag_AvrModbusMasterSlaveInfo *SlaveArray;
 	tag_AvrModbusMasterSlaveInfo *SlavePoll;
-	tag_AvrModbusMasterSlaveInfo *SlaveReceive;
 
 	char MaxSlave;
 	char AddedSlave;
@@ -189,6 +202,7 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId);
 char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl *Uart, char MaxSlave, long MasterProcTick_us);
 char AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, long PollDelay_us);
 char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *BaseAddr);
+char AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, unsigned char Id, int StartAddr, int NumberOfRegister, char *BaseAddr);
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id);
 void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned char Id, unsigned char NoResponseLimit);
 char AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*UserException)(unsigned char Id));
