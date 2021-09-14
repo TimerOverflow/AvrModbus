@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20171227)
+#if(AVR_MODBUS_REVISION_DATE != 20180906)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -26,7 +26,7 @@ static char CheckAllOfSlaveInit(tag_AvrModbusSlaveCtrl *Slave)
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 0	: 초기화 실패.
+			- 0	: 초기화 실패.
 			- 1	:	초기화 성공.
 
 		3) 설명
@@ -48,7 +48,7 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, char ErrCode)
 			- ErrCode : 에러 코드.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Master의 요청에 문제가 있을 때 지정한 에러코드를 응답함.
@@ -80,7 +80,7 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Master의 'ReadHolding' 명령에 대한 처리.
@@ -122,7 +122,7 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Master의 'PresetSingle' 명령에 대한 처리.
@@ -175,7 +175,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Master의 'PresetMultiple' 명령에 대한 처리.
@@ -190,7 +190,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	}
 	else
 	{
-		Length = NumberOfRegister *= 2;
+		Length = NumberOfRegister * 2;
 		Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
 		BaseAddr = (char *) (((int *) Slave->BaseAddr) + ((StartAddr < 200) ? 0 : StartAddr - 200));
 
@@ -233,7 +233,7 @@ char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *U
 			- SlaveProcTick_us : AvrModbusSlaveProc() 함수를 실행하는 주기.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -264,7 +264,7 @@ char AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, char (*Chec
 			- CheckOutRange : 사용자 정의 범위 확인 함수의 주소.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -293,7 +293,7 @@ char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*U
 			- UserException : 사용자 정의 예외처리 함수의 주소.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -325,7 +325,7 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 			- SlaveAddr : Slave의 ID.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Slave 동작을 처리함.
@@ -386,7 +386,7 @@ static char CheckAllOfMasterInit(tag_AvrModbusMasterCtrl *Master)
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 0	: 초기화 실패.
+			- 0	: 초기화 실패.
 			- 1	:	초기화 성공.
 
 		3) 설명
@@ -407,7 +407,7 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 			- Slave : tag_AvrModbusMasterSlaveInfo 인스턴스의 주소.
 
 		2) 반환
-		  - 인수로 받은 Slave와 인접한 다음 Slave의 주소.
+			- 인수로 받은 Slave와 인접한 다음 Slave의 주소.
 
 		3) 설명
 			- 본 함수는 Master에 추가 되어 있는 Slave를 순회하기 위해 구현함.
@@ -447,7 +447,7 @@ static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Mast
 			- Id : 찾고자 하는 Slave의 ID
 
 		2) 반환
-		  - 인수로 받은 Id에 해당하는 Slave의 주소.
+			- 인수로 받은 Id에 해당하는 Slave의 주소.
 
 		3) 설명
 			- 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
@@ -476,7 +476,7 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Slave Polling을 수행함.
@@ -514,7 +514,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Slave의 ReadHolding 응답을 처리함.
@@ -555,7 +555,7 @@ char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl
 			- MasterProcTick_us : AvrModbusMasterProc() 함수를 실행하는 주기.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -590,7 +590,7 @@ char AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, long PollDe
 			- PollDelay_us : Master가 Slave를 Polling할 주기.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -620,7 +620,7 @@ char AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, unsigned char Id, 
 			- BaseAddr : 추가할 Slave와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
 
 		2) 반환
-		  - 0 : 초기화 실패
+			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
@@ -671,7 +671,7 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char I
 			- Id : 삭제할 Slave의 ID
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave 삭제.
@@ -702,7 +702,7 @@ void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned
 			- NoResponseLimit : 무응답 횟수.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave의 무응답 횟수 설정.
@@ -730,7 +730,7 @@ char AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*Us
 			- UserException : 사용자 정의 함수의 주소.
 
 		2) 반환
-		  - 0 : 연결 실패
+			- 0 : 연결 실패
 			- 1 : 연결 성공
 
 		3) 설명
@@ -756,7 +756,7 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
 
 		2) 반환
-		  - 없음.
+			- 없음.
 
 		3) 설명
 			- Master 동작 처리.
@@ -811,7 +811,7 @@ char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char 
 			- PresetData : write 데이터.
 
 		2) 반환
-		  - 0 : 요청 실패
+			- 0 : 요청 실패
 			- 1 : 요청 성공
 
 		3) 설명
@@ -854,7 +854,7 @@ char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned cha
 			- BaseAddr : PresetMultiple 요청할 데이터 버퍼의 주소.
 
 		2) 반환
-		  - 0 : 요청 실패
+			- 0 : 요청 실패
 			- 1 : 요청 성공
 
 		3) 설명
@@ -902,7 +902,7 @@ char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsign
 			- Id : 무응답 여부를 확인할 Slave의 ID
 
 		2) 반환
-		  - 0 : Slave 응답 정상
+			- 0 : Slave 응답 정상
 			- 1 : Slave 무응답
 
 		3) 설명
