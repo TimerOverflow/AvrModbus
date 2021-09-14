@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20161108)
+#if(AVR_MODBUS_REVISION_DATE != 20161121)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -492,6 +492,8 @@ char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char 
 		return false;
 	}
 	
+	Master->Status = AVR_MODBUS_PresetSingle;
+	
 	AvrUartPutChar(Master->Uart, SlaveId);
 	AvrUartPutChar(Master->Uart, AVR_MODBUS_PresetSingle);
 	AvrUartPutChar(Master->Uart, RegAddr >> 8);
@@ -516,6 +518,8 @@ char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned cha
 	{
 		return false;
 	}
+	
+	Master->Status = AVR_MODBUS_PresetMultiple;
 	
 	AvrUartPutChar(Master->Uart, SlaveId);
 	AvrUartPutChar(Master->Uart, AVR_MODBUS_PresetMultiple);
