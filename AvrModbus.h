@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20191010
+#define AVR_MODBUS_REVISION_DATE				20200623
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2020. 06. 23.					- Slave파트 AVR_MODBUS_ReadSerialNumber (0x73) 펑션 추가.
+	Jeong Hyun Gu
+
 	2019. 10. 10.					- crc16(20191007) 버전 대응 위해 SysTypedef.h 적용.
 	Jeong Hyun Gu					-	AvrUart(20191010) 버전 대응 위해 AvrModbusSlaveProc()에서
 													AvrUartFixTxEnableFloating() 삭제, AvrUartControlTxEnd() 호출.
@@ -121,6 +124,7 @@
 
 typedef enum
 {
+	AVR_MODBUS_ReadSerialNumber = 0x73,
 	AVR_MODBUS_ReadHolding = 0x03,
 	AVR_MODBUS_ReadInput = 0x04,
 	AVR_MODBUS_PresetSingle = 0x06,
@@ -141,6 +145,7 @@ typedef struct tag_AvrModbusSlaveCtrl
 		tU8 InitUserException		:		1;
 		tU8 InitPreUserException	:		1;
 		tU8 InitCustomFrameCheck	:		1;
+		tU8 InitSerialNumber			:		1;
 		tU8 InitComplete					:		1;
 	}Bit;
 
@@ -151,6 +156,7 @@ typedef struct tag_AvrModbusSlaveCtrl
 	tU16	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr);
 	
 	tU8 *BaseAddr;
+	tU8 *SerialNumberAddr;
 	tU16 MapStartAddr;
 }tag_AvrModbusSlaveCtrl;
 
@@ -216,6 +222,7 @@ tU8 AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*Us
 tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*PreUserException)(tag_AvrModbusSlaveCtrl *Slave, tU8 *SlaveId));
 tU8 AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, tU16 MapStartAddr);
 tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr));
+tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, tU8 *SerialNumberAddr);
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId);
 
 #endif
