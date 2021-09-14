@@ -1,6 +1,6 @@
 /*********************************************************************************/
 /*
- * Author : Jung Hyun Gu
+ * Author : Jeong Hyun Gu
  * File name : AvrModbus.h
 */
 /*********************************************************************************/
@@ -9,10 +9,15 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20170224
+#define AVR_MODBUS_REVISION_DATE				20170322
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2017. 03. 22.					- Slave파트 일부 public 함수에 초기화 확인 부분 추가.
+	Jung Hyun Gu					- Master 파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple()는 폴링 상태일 때에만 처리함.
+													(커맨드 처리전 중복 호출할 경우 정상처리 하지 못 함.)
+
+
 	2017. 02. 24.					- Master파트 MasterReceive() 함수에 function code 확인 추가.
 	Jung Hyun Gu					- AvrModbusMasterSetSlaveNoResponse() 함수 추가.
 												-	AvrModbusMasterSetPollingDelay() 함수의 'MasterProcTick_us' 인수 삭제.
