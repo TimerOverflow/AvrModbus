@@ -9,15 +9,18 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20161108
+#define AVR_MODBUS_REVISION_DATE				20161121
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2016. 11. 21.					- Master파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple() 함수에서
+	Jung Hyun Gu						Master->Status를 핸들링 하지 않던 부분 수정.
+
 	2016. 11. 08.					- revision valid check 추가.
 	Jung Hyun Gu
 
 	2016. 11. 04.					- Master파트 CheckSlaveId() 함수 삭제.
-	Jung Hyun Gu					- 하위호한 가능.
+	Jung Hyun Gu					- 하위호환 가능.
 
 	2016. 11. 02.					- AvrModbusMasterGeneralInit() 함수 일부 수정. (초기화 및 Receiving 최소 지연 추가)
 	Jung Hyun Gu					- 마스터 변수명 변경. 'PollDelay_us' -> 'PollDelay'
@@ -34,8 +37,8 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			false
-#define	AVR_MODBUS_SLAVE			true
+#define	AVR_MODBUS_MASTER			true
+#define	AVR_MODBUS_SLAVE			false
 
 #define AVR_MODBUS_RECEIVING_DELAY_US			50000
 #define AVR_MODBUS_SLAVE_NO_RESPONSE			20
