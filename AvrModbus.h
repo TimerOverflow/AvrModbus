@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20161207
+#define AVR_MODBUS_REVISION_DATE				20161226
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2016. 12. 26.					- Slave파트 AvrModbusSlaveProc()함수에 수신 대기 중 TX Enable 비활성화 추가.
+	Jung Hyun Gu
+
 	2016. 12. 07.					- 'AvrUart' 모듈의 'enum_AvrUartMoveDirection' 타입 삭제와 관련된 부분 수정.
 	Jung Hyun Gu					- 'AvrUart' 모듈의 'AvrUartClearRx' 함수 삭제와 관련된 부분 수정.
 												- 'enum_AvrModbusDirection' 타입 삭제.
@@ -56,7 +59,7 @@ typedef enum
 	AVR_MODBUS_ReadHolding = 0x03,
 	AVR_MODBUS_PresetSingle = 0x06,
 	AVR_MODBUS_PresetMultiple = 0x10,
-	
+
 }enum_AvrModbusFunction;
 
 /*********************************************************************************/
@@ -73,14 +76,14 @@ typedef struct
 		char InitCheckOutRange		:		1;
 		char InitUserException		:		1;
 		char InitComplete					:		1;
-		
+
 	}Bit;
-	
+
 	tag_AvrUartCtrl *Uart;
 	char (*CheckOutRange)(int StartAddr, int NumberOfRegister);
 	void (*UserException)(int StartAddr, int NumberOfRegister);
 	char *TargetData;
-	
+
 }tag_AvrModbusSlaveCtrl;
 
 #endif
@@ -95,7 +98,7 @@ typedef struct
 	char *TargetData;
 	char NoResponseCnt;
 }tag_AvrModbusMasterSlaveInfo;
-	
+
 typedef struct
 {
 	struct
@@ -103,21 +106,21 @@ typedef struct
 		char InitGeneral				:		1;
 		char InitPollDelay			:		1;
 		char InitComplete				:		1;
-		
+
 	}Bit;
-	
+
 	tag_AvrUartCtrl *Uart;
 	long PollDelay;
 	long PollCnt;
-	
+
 	tag_AvrModbusMasterSlaveInfo *SlaveArray;
 	tag_AvrModbusMasterSlaveInfo *SlavePoll;
 	tag_AvrModbusMasterSlaveInfo *SlaveReceive;
 	char MaxSlave;
 	char AddedSlave;
-	
+
 	enum_AvrModbusFunction Status;
-	
+
 }tag_AvrModbusMasterCtrl;
 
 #endif
@@ -146,19 +149,8 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master);
 char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int RegAddr, int PresetData);
 char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int StartAddr, int NumberOfRegister, char *TargetData);
 char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned char Id);
-	
+
 #endif
 
 /*********************************************************************************/
 #endif //__AVR_MODBUS_H__
-
-
-
-
-
-
-
-
-
-
-
