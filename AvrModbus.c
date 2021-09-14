@@ -9,12 +9,11 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20190507)
+#if(AVR_MODBUS_REVISION_DATE != 20190828)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
 /** Global variable **/
-
 
 /*********************************************************************************/
 #if(AVR_MODBUS_SLAVE == true)
@@ -92,7 +91,7 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 	StartAddr = (StartAddr < 200) ? 0 : StartAddr - 200;
 	NumberOfPoint *= 2;
 	BaseAddr = (char *) (((int *) Slave->BaseAddr) + StartAddr);
-
+	
 	AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
 	AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
 	AvrUartPutChar(Slave->Uart, NumberOfPoint);		//Byte Count
@@ -103,7 +102,14 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 		AvrUartPutChar(Slave->Uart, *(BaseAddr + i));
 	}
 
-	Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+	if(Slave->Bit.InitCustomFrameCheck)
+	{
+		Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+	}
+	else
+	{
+		Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+	}
 
 	AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
 	AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
@@ -137,7 +143,7 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 	}
 	else
 	{
-		BaseAddr = ((int *) Slave->BaseAddr) + ((RegisterAddr < 200) ? 0 : RegisterAddr - 200);
+		BaseAddr = ((int *) Slave->BaseAddr) + ((RegisterAddr < Slave->MapStartAddr) ? RegisterAddr : RegisterAddr - Slave->MapStartAddr);
 		*BaseAddr = PresetData;
 
 		if(Slave->Bit.InitUserException == true)
@@ -154,7 +160,14 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 			AvrUartPutChar(Slave->Uart, RxQue->Buf[4]);		//Preset Data Hi
 			AvrUartPutChar(Slave->Uart, RxQue->Buf[5]);		//Preset Data Lo
 
-			Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+			if(Slave->Bit.InitCustomFrameCheck)
+			{
+				Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+			}
+			else
+			{
+				Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+			}
 
 			AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
 			AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
@@ -192,7 +205,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	{
 		Length = NumberOfRegister * 2;
 		Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
-		BaseAddr = (char *) (((int *) Slave->BaseAddr) + ((StartAddr < 200) ? 0 : StartAddr - 200));
+		BaseAddr = (char *) (((int *) Slave->BaseAddr) + ((StartAddr < Slave->MapStartAddr) ? StartAddr : StartAddr - Slave->MapStartAddr));
 
 		for(i = 0; i < Length; i += 2)
 		{
@@ -214,7 +227,14 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 			AvrUartPutChar(Slave->Uart, RxQue->Buf[4]);
 			AvrUartPutChar(Slave->Uart, RxQue->Buf[5]);
 
-			Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+			if(Slave->Bit.InitCustomFrameCheck)
+			{
+				Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+			}
+			else
+			{
+				Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+			}
 
 			AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
 			AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
@@ -245,6 +265,7 @@ char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *U
 	{
 		Slave->Uart = Uart;
 		Slave->BaseAddr = BaseAddr;
+		Slave->MapStartAddr = 200;
 		Slave->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / SlaveProcTick_us;
 		if(Slave->Uart->ReceivingDelay < 2) Slave->Uart->ReceivingDelay = 2;
 
@@ -343,6 +364,57 @@ char AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, char 
 	return Slave->Bit.InitPreUserException;
 }
 /*********************************************************************************/
+char AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, unsigned int MapStartAddr)
+{
+	/*
+		1) 인수
+			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+			- MapStartAddr : 모드버스맵상의 시작 주소.
+
+		2) 반환
+			- 0 : 초기화 실패
+			- 1 : 초기화 성공
+
+		3) 설명
+			- 슬레이브의 모드버스맵 주소상 시작 주소 설정.
+	*/
+
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
+	Slave->MapStartAddr = MapStartAddr;
+
+	return true;
+}
+/*********************************************************************************/
+char AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, int	(*CustomFrameCheck)(tag_AvrUartRingBuf *RxQue, int Ctr))
+{
+	/*
+		1) 인수
+			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+			- CustomFrameCheck : 사영자 정의 프레임 에러 검출 함수 주소.
+
+		2) 반환
+			- 0 : 초기화 실패
+			- 1 : 초기화 성공
+
+		3) 설명
+			- 사용자 정의 프레임 에러 검출 함수 연결.
+	*/
+	
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
+	Slave->CustomFrameCheck = CustomFrameCheck;
+	Slave->Bit.InitCustomFrameCheck = true;
+
+	return Slave->Bit.InitCustomFrameCheck;
+}
+/*********************************************************************************/
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId)
 {
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -377,7 +449,14 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId)
 		{
 			if((RxQue->Buf[0] == SlaveId ) || (RxQue->Buf[0] == 0) || (RxQue->Buf[0] == 255))
 			{
-				Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
+				if(Slave->Bit.InitCustomFrameCheck)
+				{
+					Crc16 = Slave->CustomFrameCheck(RxQue, RxQue->Ctr - 2);
+				}
+				else
+				{
+					Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
+				}
 
 				if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 				{
@@ -409,7 +488,6 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId)
 				}
 			}
 		}
-
 		AvrUartClearQueueBuf(RxQue);
 	}
 }
