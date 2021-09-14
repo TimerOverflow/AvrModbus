@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20210318
+#define AVR_MODBUS_REVISION_DATE				20210408
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2021. 04. 08.					- 2021. 03. 18. 에서 잘 못 수정한 부분 수정. AvrModbusMasterRemoveSlave() 후 AvrModbusMasterAddSlave()하면 슬레이브 호출을
+	Jeong Hyun Gu						정상적으로 하지 못하는 문제 수정.
+
 	2021. 03. 18.					- Master파트 tag_AvrModbusMasterSlavePollData는 AvrModbusMasterAddSlave(), AvrModbusMasterAddSlavePollData() 호출할 때
 	Jeong Hyun Gu						할당 하게 되어 있는데, Master Init 시점에서 메모리 동적할당 성공여부를 확인할 수 없음.
 													AvrModbusMasterAddSlavePollData()는 보통 잘 사용하지 않으므로 AvrModbusMasterGeneralInit() 시점에서 미리 1개의 tag_AvrModbusMasterSlavePollData를
