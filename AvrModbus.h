@@ -9,49 +9,52 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20170322
+#define AVR_MODBUS_REVISION_DATE				20170726
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2017. 07. 26.					- Uart::ReceivingDelay 최소 값 제한.
+	Jeong Hyun Gu					- AvrModbusSlaveProc() 함수에 AvrUartFixTxEnableFloating() 호출 추가.
+
 	2017. 03. 22.					- Slave파트 일부 public 함수에 초기화 확인 부분 추가.
-	Jung Hyun Gu					- Master 파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple()는 폴링 상태일 때에만 처리함.
+	Jeong Hyun Gu					- Master 파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple()는 폴링 상태일 때에만 처리함.
 													(커맨드 처리전 중복 호출할 경우 정상처리 하지 못 함.)
 
 
 	2017. 02. 24.					- Master파트 MasterReceive() 함수에 function code 확인 추가.
-	Jung Hyun Gu					- AvrModbusMasterSetSlaveNoResponse() 함수 추가.
+	Jeong Hyun Gu					- AvrModbusMasterSetSlaveNoResponse() 함수 추가.
 												-	AvrModbusMasterSetPollingDelay() 함수의 'MasterProcTick_us' 인수 삭제.
 													폴링 딜레이 함수는 더 이상 필수 초기화가 아니며, AvrModbusMasterGeneralInit()에서 디폴트 설정.
 												- AvrUartViewRxBuf() 함수를 사용하지 않고 수신 버퍼에 직접 접근.
 												- Master 파트 UserException() 함수 추가.
 
 	2017. 01. 02.					- 2016. 12. 26.에 추가 되었던 내용 삭제. (AvrUart 모듈로 이동)
-	Jung Hyun Gu
+	Jeong Hyun Gu
 
 	2016. 12. 26.					- Slave파트 AvrModbusSlaveProc()함수에 수신 대기 중 TX Enable 비활성화 추가.
-	Jung Hyun Gu
+	Jeong Hyun Gu
 
 	2016. 12. 07.					- 'AvrUart' 모듈의 'enum_AvrUartMoveDirection' 타입 삭제와 관련된 부분 수정.
-	Jung Hyun Gu					- 'AvrUart' 모듈의 'AvrUartClearRx' 함수 삭제와 관련된 부분 수정.
+	Jeong Hyun Gu					- 'AvrUart' 모듈의 'AvrUartClearRx' 함수 삭제와 관련된 부분 수정.
 												- 'enum_AvrModbusDirection' 타입 삭제.
 												- 주석 추가.
 
 	2016. 11. 21.					- Master파트 AvrModbusMasterPresetSingle(), AvrModbusMasterPresetMultiple() 함수에서
-	Jung Hyun Gu						Master->Status를 핸들링 하지 않던 부분 수정.
+	Jeong Hyun Gu						Master->Status를 핸들링 하지 않던 부분 수정.
 
 	2016. 11. 08.					- revision valid check 추가.
-	Jung Hyun Gu
+	Jeong Hyun Gu
 
 	2016. 11. 04.					- Master파트 CheckSlaveId() 함수 삭제.
-	Jung Hyun Gu					- 하위호환 가능.
+	Jeong Hyun Gu					- 하위호환 가능.
 
 	2016. 11. 02.					- AvrModbusMasterGeneralInit() 함수 일부 수정. (초기화 및 Receiving 최소 지연 추가)
-	Jung Hyun Gu					- 마스터 변수명 변경. 'PollDelay_us' -> 'PollDelay'
+	Jeong Hyun Gu					- 마스터 변수명 변경. 'PollDelay_us' -> 'PollDelay'
 												- UART 모듈 변수명 변경. 'Uart->ReceivingDelay_us' -> 'Uart->ReceivingDelay'
 												- 전처리 값 변경 'AVR_MODBUS_RECEIVING_DELAY_US' 20000 -> 50000
 
 	2016. 10. 28.					- 초기버전.
-	Jung Hyun Gu
+	Jeong Hyun Gu
 */
 /*********************************************************************************/
 /**Define**/
