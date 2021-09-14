@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20170726
+#define AVR_MODBUS_REVISION_DATE				20171227
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2017. 12. 27.					- ErrorException() Id가 0xFF일 경우 에러를 응답하지 않음.
+	Jeong Hyun Gu
+
 	2017. 07. 26.					- Uart::ReceivingDelay 최소 값 제한.
 	Jeong Hyun Gu					- AvrModbusSlaveProc() 함수에 AvrUartFixTxEnableFloating() 호출 추가.
 
