@@ -9,8 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
+#define AVR_MODBUS_REVISION_DATE				20161108
+/*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2016. 11. 08.					- revision valid check 추가.
+	Jung Hyun Gu
+
 	2016. 11. 04.					- Master파트 CheckSlaveId() 함수 삭제.
 	Jung Hyun Gu					- 하위호한 가능.
 
@@ -29,8 +34,8 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			true
-#define	AVR_MODBUS_SLAVE			false
+#define	AVR_MODBUS_MASTER			false
+#define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US			50000
 #define AVR_MODBUS_SLAVE_NO_RESPONSE			20
