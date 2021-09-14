@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20181023)
+#if(AVR_MODBUS_REVISION_DATE != 20190110)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -271,7 +271,7 @@ char AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, char (*Chec
 			- 사용자 정의 범위 확인 함수를 Slave에 연결.
 			- 본 함수를 실행하여 범위 확인 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
 			- 범위 확인 함수는 Master가 허용하지 않은 레지스터에 접근하거나 적용을 명령할 경우 에러코드를 응답할 수 있도록 함.
-			  함수를 구현할 경우 정상 범위일 때 0, 비정상 범위 일 때에는 1을 응답도록 해야 함.
+				함수를 구현할 경우 정상 범위일 때 0, 비정상 범위 일 때에는 1을 응답도록 해야 함.
 	*/
 
 	if(Slave->Bit.InitComplete == false)
@@ -300,7 +300,7 @@ char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*U
 			- 사용자 정의 예외처리 함수를 Slave에 연결.
 			- 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
 			- 예외처리 함수는 특정 레지스터에 대한 추가 처리를 가능토록 함. 예를 들어 시간 설정 레지스터에 대한 Master의 요청이 있을 경우
-			  RTC 제어 관련 함수를 호출하거나, 에러해제 시 관련 카운트 변수를 초기화 하는 등의 동작을 구현함.
+				RTC 제어 관련 함수를 호출하거나, 에러해제 시 관련 카운트 변수를 초기화 하는 등의 동작을 구현함.
 	*/
 
 	if(Slave->Bit.InitComplete == false)
@@ -314,15 +314,45 @@ char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*U
 	return Slave->Bit.InitUserException;
 }
 /*********************************************************************************/
-void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
+char AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, char (*PreUserException)(struct tag_AvrModbusSlaveCtrl *Slave, unsigned char *SlaveId))
+{
+	/*
+		1) 인수
+			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+			- PreUserException : 사용자 정의 사전 예외처리 함수의 주소.
+
+		2) 반환
+			- 0 : 초기화 실패
+			- 1 : 초기화 성공
+
+		3) 설명
+			- 사용자 정의 예외처리 함수를 Slave에 연결.
+			- 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
+			- 이 예외처리 함수는 데이터 수신 후 마스터 요청 처리 전 실행하며, 구현한 예외처리 함수에서 0이 아닌 값을 리턴할 경우
+				마스터 요청을 처리 하지 않는다.
+	*/
+
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
+	Slave->PreUserException = PreUserException;
+	Slave->Bit.InitPreUserException = true;
+
+	return Slave->Bit.InitPreUserException;
+}
+/*********************************************************************************/
+void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId)
 {
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
 	unsigned int Crc16;
+	unsigned char PreException = false;
 
 	/*
 		1) 인수
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-			- SlaveAddr : Slave의 ID.
+			- SlaveId : Slave의 ID.
 
 		2) 반환
 			- 없음.
@@ -341,36 +371,42 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
-		if((RxQue->Buf[0] == SlaveAddr ) || (RxQue->Buf[0] == 0) || (RxQue->Buf[0] == 255))
+		if(Slave->Bit.InitPreUserException && Slave->PreUserException(Slave, &SlaveId)) PreException = true;
+
+		if(PreException == false)
 		{
-			Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
-
-			if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
+			if((RxQue->Buf[0] == SlaveId ) || (RxQue->Buf[0] == 0) || (RxQue->Buf[0] == 255))
 			{
-				switch(RxQue->Buf[1])
+				Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
+
+				if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 				{
-					case	AVR_MODBUS_ReadHolding	:
-						SlaveReadHolding(Slave);
-					break;
+					switch(RxQue->Buf[1])
+					{
+						case	AVR_MODBUS_ReadHolding	:
+							SlaveReadHolding(Slave);
+						break;
 
-					case	AVR_MODBUS_PresetSingle	:
-						SlavePresetSingle(Slave);
-					break;
+						case	AVR_MODBUS_PresetSingle	:
+							SlavePresetSingle(Slave);
+						break;
 
-					case	AVR_MODBUS_PresetMultiple	:
-						SlavePresetMultiple(Slave);
-					break;
+						case	AVR_MODBUS_PresetMultiple	:
+							SlavePresetMultiple(Slave);
+						break;
 
-					default	:
-						ErrorException(Slave, 1);
-					break;
+						default	:
+							ErrorException(Slave, 1);
+						break;
+					}
+				}
+				else
+				{
+					ErrorException(Slave, 3);
 				}
 			}
-			else
-			{
-				ErrorException(Slave, 3);
-			}
 		}
+
 		AvrUartClearQueueBuf(&Slave->Uart->RxQueue);
 	}
 }
@@ -412,7 +448,7 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 		3) 설명
 			- 본 함수는 Master에 추가 되어 있는 Slave를 순회하기 위해 구현함.
 			- 인수로 받은 Slave에 다음에 위치한 Slave 주소를 반환함. 예를 들어 총 5개의 Slave가 추가 되어 있을 때 인수로 받은 Slave가
-			  3번째라면 4번째 Slave의 주소를 반환함.
+				3번째라면 4번째 Slave의 주소를 반환함.
 	*/
 
 	do
@@ -434,36 +470,6 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 	}while(Slave->Id == 0);
 
 	return Slave;
-}
-/*********************************************************************************/
-static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
-{
-	unsigned char i, Find = false;
-	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlavePoll;
-
-	/*
-		1) 인수
-			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-			- Id : 찾고자 하는 Slave의 ID
-
-		2) 반환
-			- 인수로 받은 Id에 해당하는 Slave의 주소.
-
-		3) 설명
-			- 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
-	*/
-
-	for(i = 0; i < Master->AddedSlave; i++)
-	{
-		if(Slave->Id == Id)
-		{
-			Find = true;
-			break;
-		}
-		Slave = GetAddedSlaveInfo(Master, Slave);
-	}
-
-	return Find ? Slave : null;
 }
 /*********************************************************************************/
 static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
@@ -520,7 +526,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 			- Slave의 ReadHolding 응답을 처리함.
 	*/
 
-	Slave = FindSlaveById(Master, RxQue->Buf[0]);
+	Slave = AvrModbusMasterFindSlaveById(Master, RxQue->Buf[0]);
 
 	if((Slave != null) && (RxQue->Buf[1] == AVR_MODBUS_ReadHolding))
 	{
@@ -682,7 +688,7 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, unsigned char I
 		return;
 	}
 
-	Slave = FindSlaveById(Master, Id);
+	Slave = AvrModbusMasterFindSlaveById(Master, Id);
 
 	if(Slave != null)
 	{
@@ -713,7 +719,7 @@ void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned
 		return;
 	}
 
-	Slave = FindSlaveById(Master, Id);
+	Slave = AvrModbusMasterFindSlaveById(Master, Id);
 
 	if(Slave != null)
 	{
@@ -914,7 +920,7 @@ char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsign
 		return false;
 	}
 
-	Slave = FindSlaveById(Master, Id);
+	Slave = AvrModbusMasterFindSlaveById(Master, Id);
 
 	if((Slave != null) && (Slave->NoResponseCnt >= Slave->NoResponseLimit))
 	{
@@ -924,6 +930,41 @@ char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsign
 	{
 		return false;
 	}
+}
+/*********************************************************************************/
+tag_AvrModbusMasterSlaveInfo* AvrModbusMasterFindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
+{
+	unsigned char i, Find = false;
+	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlavePoll;
+
+	/*
+		1) 인수
+			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+			- Id : 찾고자 하는 Slave의 ID
+
+		2) 반환
+			- 인수로 받은 Id에 해당하는 Slave의 주소.
+
+		3) 설명
+			- 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
+	*/
+
+	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
+	{
+		return null;
+	}
+
+	for(i = 0; i < Master->AddedSlave; i++)
+	{
+		if(Slave->Id == Id)
+		{
+			Find = true;
+			break;
+		}
+		Slave = GetAddedSlaveInfo(Master, Slave);
+	}
+
+	return Find ? Slave : null;
 }
 /*********************************************************************************/
 #endif

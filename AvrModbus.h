@@ -9,10 +9,15 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20181023
+#define AVR_MODBUS_REVISION_DATE				20190110
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2019. 01. 10.					- AvrModbusSlaveProc함수의 인수 SlaveAddr -> SlaveId 변수명 변경.
+	Jeong Hyun Gu					- Slave파트 PreUserException 추가.
+												- Master파트 FindSlaveById함수를 AvrModbusMasterFindSlaveById()로 변경하고
+													public으로 공개.
+													
 	2018. 10. 23.					- Master파트 AvrModbusMasterAddSlave()함수에서 중복 ID 검색수량
 	Jeong Hyun Gu						tag_AvrModbusMasterCtrl::AddedSlave -> tag_AvrModbusMasterCtrl::MaxSlave 변경.
 													tag_AvrModbusMasterCtrl::SlaveArray에서 추가된 Slave보다 앞쪽 배열이 비어 있는 경우
@@ -102,21 +107,23 @@ typedef enum
 
 #if(AVR_MODBUS_SLAVE == true)
 
-typedef struct
+typedef struct tag_AvrModbusSlaveCtrl
 {
 	struct
 	{
 		char InitGeneral					:		1;
 		char InitCheckOutRange		:		1;
 		char InitUserException		:		1;
+		char InitPreUserException	:		1;
+
 		char InitComplete					:		1;
 	}Bit;
 
 	tag_AvrUartCtrl *Uart;
 	char (*CheckOutRange)(int StartAddr, int NumberOfRegister);
 	void (*UserException)(int StartAddr, int NumberOfRegister);
+	char (*PreUserException)(struct tag_AvrModbusSlaveCtrl *Slave, unsigned char *SlaveId);
 	char *BaseAddr;
-
 }tag_AvrModbusSlaveCtrl;
 
 #endif
@@ -171,7 +178,8 @@ typedef struct
 char AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Uart, char *BaseAddr, long SlaveProcTick_us);
 char AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, char (*CheckRange)(int StartAddr, int NumberOfRegister));
 char AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*UserException)(int StartAddr, int NumberOfRegister));
-void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr);
+char AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, char (*PreUserException)(tag_AvrModbusSlaveCtrl *Slave, unsigned char *SlaveId));
+void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveId);
 
 #endif
 
@@ -189,6 +197,7 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master);
 char AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int RegAddr, int PresetData);
 char AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, unsigned char SlaveId, int StartAddr, int NumberOfRegister, char *BaseAddr);
 char AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, unsigned char Id);
+tag_AvrModbusMasterSlaveInfo* AvrModbusMasterFindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id);
 
 #endif
 
