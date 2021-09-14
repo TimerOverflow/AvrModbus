@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20201020)
+#if(AVR_MODBUS_REVISION_DATE != 20210318)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -723,6 +723,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 /*********************************************************************************/
 tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl *Uart, tU8 MaxSlave, tU32 MasterProcTick_us)
 {
+	tU8 i;
 	/*
 		1) 인수
 			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
@@ -738,13 +739,31 @@ tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl 
 			- Master와 관련된 필수 정보들을 초기화 함.
 			- 본 함수를 호출하기전 Uart는 선행적으로 초기화가 완료 되어 있어야 함.
 	*/
-
-	if(Uart->Bit.InitComplete == true)
+	
+	if((Uart == null) || (Uart->Bit.InitComplete != true))
 	{
-		Master->Uart = Uart;
+		return false;
 	}
+	//Uart 초기화 여부 검사
 
 	Master->SlaveArray = (tag_AvrModbusMasterSlaveInfo *) calloc(MaxSlave, sizeof(tag_AvrModbusMasterSlaveInfo));
+	if(Master->SlaveArray == null)
+	{
+		return false;
+	}
+	//tag_AvrModbusMasterSlaveInfo 동적할당
+	
+	for(i = 0; i < MaxSlave; i++)
+	{
+		Master->SlaveArray[i].PollData = (tag_AvrModbusMasterSlavePollData *) calloc(1, sizeof(tag_AvrModbusMasterSlavePollData));
+		if(Master->SlaveArray[i].PollData == null)
+		{
+			return false;
+		}
+	}
+	//tag_AvrModbusMasterSlavePollData 동적 할당
+	
+	Master->Uart = Uart;
 	Master->MaxSlave = MaxSlave;
 	Master->Status = AVR_MODBUS_ReadHolding;
 	Master->Tick_us = MasterProcTick_us;
@@ -752,7 +771,7 @@ tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl 
 	Master->PollDelay = AVR_MODBUS_DEFAULT_POLLING_DELAY_US / Master->Tick_us;
 	if(Master->Uart->ReceivingDelay < 2) Master->Uart->ReceivingDelay = 2;
 
-	Master->Bit.InitGeneral = ((Master->Uart == null) || (Master->SlaveArray == null)) ? false : true;
+	Master->Bit.InitGeneral = true;
 	Master->Bit.InitComplete = CheckAllOfMasterInit(Master);
 
 	return Master->Bit.InitGeneral;
@@ -821,26 +840,17 @@ tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrMod
 	{
 		if(Master->SlaveArray[i].Id == 0)
 		{
-			Master->SlaveArray[i].PollData = (tag_AvrModbusMasterSlavePollData *) calloc(1, sizeof(tag_AvrModbusMasterSlavePollData));
-			if(Master->SlaveArray[i].PollData == null)
-			{
-				Master->Bit.PollDataAllocFail = true;
-				break;
-			}
-			else
-			{
-				Master->SlaveArray[i].Id = Id;
-				Master->SlaveArray[i].NoResponseCnt = 0;
-				Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
-				Master->SlaveArray[i].PollDataMax = 1;
-				Master->SlaveArray[i].PollData[0].PollFunction = PollFunction;
-				Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
-				Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
-				Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
-				Master->SlavePoll = &Master->SlaveArray[i];
-				Master->AddedSlave++;
-				return true;
-			}
+			Master->SlaveArray[i].Id = Id;
+			Master->SlaveArray[i].NoResponseCnt = 0;
+			Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
+			Master->SlaveArray[i].PollDataMax = 1;
+			Master->SlaveArray[i].PollData[0].PollFunction = PollFunction;
+			Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
+			Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
+			Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
+			Master->SlavePoll = &Master->SlaveArray[i];
+			Master->AddedSlave++;
+			return true;
 		}
 	}
 
