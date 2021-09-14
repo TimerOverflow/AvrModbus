@@ -6,8 +6,8 @@
 /*********************************************************************************/
 #include <stdlib.h>
 #include <string.h>
-#include "include/AvrModbus.h"
-#include "include/crc16.h"
+#include "AvrModbus.h"
+#include "crc16.h"
 /*********************************************************************************/
 /** Global variable **/
 
@@ -195,7 +195,6 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, unsigned char SlaveAddr)
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
 	unsigned int Crc16;
 	
-	
 	if((AvrUartCheckRx(Slave->Uart) >= 1) && (AvrUartCheckReceiving(Slave->Uart) == false))
 	{
 		if((AvrUartViewRxBuf(Slave->Uart, 0, AVR_UART_FORWARD) == SlaveAddr ) || (AvrUartViewRxBuf(Slave->Uart, 0, AVR_UART_FORWARD) == 0) || (AvrUartViewRxBuf(Slave->Uart, 0, AVR_UART_FORWARD) == 255))
@@ -284,21 +283,22 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
 	return Slave;
 }
 /*********************************************************************************/
-static char CheckSlaveId(tag_AvrModbusMasterCtrl *Master, char SlaveId)
+static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
 {
-	char i;
+	unsigned char i, Find = false;
+	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
 	
 	for(i = 0; i < Master->AddedSlave; i++)
 	{
-		if(SlaveId == Master->SlaveReceive->Id)
+		if(Slave->Id == Id)
 		{
-			return true;
+			Find = true;
+			break;
 		}
-		
-		Master->SlaveReceive = GetAddedSlaveInfo(Master, Master->SlaveReceive, AVR_MODBUS_Next);
+		Slave = GetAddedSlaveInfo(Master, Slave, AVR_MODBUS_Next);
 	}
 	
-	return false;
+	return Find ? Slave : null;
 }
 /*********************************************************************************/
 static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
@@ -330,8 +330,10 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 {
 	unsigned int Crc16, Length, i, j = 3;
 	tag_AvrUartRingBuf *RxQue = &Master->Uart->RxQueue;
+
+	Master->SlaveReceive = FindSlaveById(Master, AvrUartViewRxBuf(Master->Uart, 0, AVR_UART_FORWARD));
 	
-	if(CheckSlaveId(Master, AvrUartViewRxBuf(Master->Uart, 0, AVR_UART_FORWARD)) == true)
+	if(Master->SlaveReceive != null)
 	{
 		Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 		
@@ -347,24 +349,6 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 			}
 		}
 	}
-}
-/*********************************************************************************/
-static tag_AvrModbusMasterSlaveInfo* FindSlaveById(tag_AvrModbusMasterCtrl *Master, unsigned char Id)
-{
-	unsigned char i, Find = false;
-	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
-	
-	for(i = 0; i < Master->AddedSlave; i++)
-	{
-		if(Slave->Id == Id)
-		{
-			Find = true;
-			break;
-		}
-		Slave = GetAddedSlaveInfo(Master, Slave, AVR_MODBUS_Next);
-	}
-	
-	return Find ? Slave : null;
 }
 /*********************************************************************************/
 char AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl *Uart, char MaxSlave, long MasterProcTick_us)

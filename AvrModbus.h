@@ -7,10 +7,13 @@
 #ifndef __AVR_MODBUS_H__
 #define	__AVR_MODBUS_H__
 /*********************************************************************************/
-#include "include/AvrUart.h"
+#include "AvrUart.h"
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2016. 11. 04.					- Master파트 CheckSlaveId() 함수 삭제.
+	Jung Hyun Gu					- 하위호한 가능.
+
 	2016. 11. 02.					- AvrModbusMasterGeneralInit() 함수 일부 수정. (초기화 및 Receiving 최소 지연 추가)
 	Jung Hyun Gu					- 마스터 변수명 변경. 'PollDelay_us' -> 'PollDelay'
 												- UART 모듈 변수명 변경. 'Uart->ReceivingDelay_us' -> 'Uart->ReceivingDelay'
@@ -26,8 +29,8 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			false
-#define	AVR_MODBUS_SLAVE			true
+#define	AVR_MODBUS_MASTER			true
+#define	AVR_MODBUS_SLAVE			false
 
 #define AVR_MODBUS_RECEIVING_DELAY_US			50000
 #define AVR_MODBUS_SLAVE_NO_RESPONSE			20
