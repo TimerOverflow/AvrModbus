@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20200703)
+#if(AVR_MODBUS_REVISION_DATE != 20200804)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -88,32 +88,39 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 	StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
 	NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
-	StartAddr = (StartAddr < 200) ? 0 : StartAddr - 200;
-	NumberOfPoint *= 2;
-	BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + StartAddr);
-	
-	AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
-	AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
-	AvrUartPutChar(Slave->Uart, NumberOfPoint);		//Byte Count
-
-	for(i = 0; i < NumberOfPoint; i += 2)
+	if(StartAddr < Slave->MapStartAddr)
 	{
-		AvrUartPutChar(Slave->Uart, *(BaseAddr + i + 1));
-		AvrUartPutChar(Slave->Uart, *(BaseAddr + i));
-	}
-
-	if(Slave->Bit.InitCustomFrameCheck)
-	{
-		Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+		ErrorException(Slave, 2);
 	}
 	else
 	{
-		Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+		StartAddr -= Slave->MapStartAddr;
+		NumberOfPoint *= 2;
+		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + StartAddr);
+		
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
+		AvrUartPutChar(Slave->Uart, NumberOfPoint);		//Byte Count
+	
+		for(i = 0; i < NumberOfPoint; i += 2)
+		{
+			AvrUartPutChar(Slave->Uart, *(BaseAddr + i + 1));
+			AvrUartPutChar(Slave->Uart, *(BaseAddr + i));
+		}
+	
+		if(Slave->Bit.InitCustomFrameCheck)
+		{
+			Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+		}
+		else
+		{
+			Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+		}
+	
+		AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
+		AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
+		AvrUartStartTx(Slave->Uart);
 	}
-
-	AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
-	AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
-	AvrUartStartTx(Slave->Uart);
 }
 /*********************************************************************************/
 static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
@@ -137,13 +144,13 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
 	RegisterAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
 	PresetData = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
-	if((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true))
+	if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true)) || (RegisterAddr < Slave->MapStartAddr))
 	{
 		ErrorException(Slave, 2);
 	}
 	else
 	{
-		BaseAddr = ((tU16 *) Slave->BaseAddr) + ((RegisterAddr < Slave->MapStartAddr) ? RegisterAddr : RegisterAddr - Slave->MapStartAddr);
+		BaseAddr = ((tU16 *) Slave->BaseAddr) + (RegisterAddr - Slave->MapStartAddr);
 		*BaseAddr = PresetData;
 
 		if(Slave->Bit.InitUserException == true)
@@ -197,7 +204,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	StartAddr = (RxQue->Buf[2] << 8) + RxQue->Buf[3];
 	NumberOfRegister = (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
-	if((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true))
+	if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true)) || (StartAddr < Slave->MapStartAddr))
 	{
 		ErrorException(Slave, 2);
 	}
@@ -205,7 +212,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	{
 		Length = NumberOfRegister * 2;
 		Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
-		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + ((StartAddr < Slave->MapStartAddr) ? StartAddr : StartAddr - Slave->MapStartAddr));
+		BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + (StartAddr - Slave->MapStartAddr));
 
 		for(i = 0; i < Length; i += 2)
 		{
