@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20200623)
+#if(AVR_MODBUS_REVISION_DATE != 20200703)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -251,7 +251,8 @@ static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
 	tU8 *BaseAddr;
 
 	StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
-	NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+	NumberOfPoint = strlen(Slave->SerialNumberAddr) / 2;
+	if(strlen(Slave->SerialNumberAddr) % 2) NumberOfPoint += 1;
 
 	if(Slave->Bit.InitSerialNumber == false)
 	{
@@ -264,7 +265,7 @@ static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
 	else
 	{
 		NumberOfPoint *= 2;
-		BaseAddr = Slave->SerialNumberAddr;
+		BaseAddr = (tU8 *) Slave->SerialNumberAddr;
 		
 		AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
 		AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
@@ -435,7 +436,7 @@ tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16	(*Cus
 	/*
 		1) 인수
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-			- CustomFrameCheck : 사영자 정의 프레임 에러 검출 함수 주소.
+			- CustomFrameCheck : 사용자 정의 프레임 에러 검출 함수 주소.
 
 		2) 반환
 			- 0 : 초기화 실패
@@ -456,19 +457,19 @@ tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16	(*Cus
 	return Slave->Bit.InitCustomFrameCheck;
 }
 /*********************************************************************************/
-tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, tU8 *SerialNumberAddr)
+tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNumberAddr)
 {
 	/*
 		1) 인수
 			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-			- CustomFrameCheck : 사영자 정의 프레임 에러 검출 함수 주소.
+			- SerialNumberAddr : 프로그램명 문자열.
 
 		2) 반환
 			- 0 : 초기화 실패
 			- 1 : 초기화 성공
 
 		3) 설명
-			- 사용자 정의 프레임 에러 검출 함수 연결.
+			- 본 함수를 호출하여 문자열 연결 후 AVR_MODBUS_ReadSerialNumber(0x73)으로 호출하면 프로그램명 응답.
 	*/
 	
 	if(Slave->Bit.InitComplete == false)
@@ -655,7 +656,7 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 	PollData = &Master->SlavePoll->PollData[Master->SlavePoll->PollDataIndex];
 
 	AvrUartPutChar(Master->Uart, Master->SlavePoll->Id);
-	AvrUartPutChar(Master->Uart, Master->SlavePoll->PollFunction);
+	AvrUartPutChar(Master->Uart, PollData->PollFunction);
 	AvrUartPutChar(Master->Uart, (PollData->StartAddr >> 8));
 	AvrUartPutChar(Master->Uart, (PollData->StartAddr & 0x00FF));
 	AvrUartPutChar(Master->Uart, (PollData->NumberOfRegister >> 8));
@@ -687,15 +688,15 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 	*/
 
 	Slave = AvrModbusMasterFindSlaveById(Master, RxQue->Buf[0]);
+	PollData = &Slave->PollData[Slave->PollDataIndex];
 
-	if((Slave != null) && (RxQue->Buf[1] == Slave->PollFunction))
+	if((Slave != null) && (RxQue->Buf[1] == PollData->PollFunction))
 	{
 		Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 
 		if((RxQue->Buf[RxQue->Ctr - 2] == (Crc16 >> 8)) && (RxQue->Buf[RxQue->Ctr - 1] == (Crc16 & 0x00FF)))
 		{
 			Slave->NoResponseCnt = 0;
-			PollData = &Slave->PollData[Slave->PollDataIndex];
 			Length = PollData->NumberOfRegister * 2;
 			for(i = 0; i < Length; i += 2)
 			{
@@ -772,7 +773,7 @@ tU8 AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, tU32 PollDel
 	return true;
 }
 /*********************************************************************************/
-tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
+tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
 {
 	tU8 i;
 	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
@@ -823,7 +824,7 @@ tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartA
 				Master->SlaveArray[i].NoResponseCnt = 0;
 				Master->SlaveArray[i].NoResponseLimit = AVR_MODBUS_DEFAULT_SLAVE_NO_RESPONSE;
 				Master->SlaveArray[i].PollDataMax = 1;
-				Master->SlaveArray[i].PollFunction = AVR_MODBUS_ReadHolding;
+				Master->SlaveArray[i].PollData[0].PollFunction = AVR_MODBUS_ReadHolding;
 				Master->SlaveArray[i].PollData[0].StartAddr = StartAddr;
 				Master->SlaveArray[i].PollData[0].NumberOfRegister = NumberOfRegister;
 				Master->SlaveArray[i].PollData[0].BaseAddr = BaseAddr;
@@ -838,7 +839,7 @@ tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartA
 	return false;
 }
 /*********************************************************************************/
-tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
+tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
 {
 	tU8 i;
 	tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
@@ -900,6 +901,7 @@ tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU1
 	Slave->PollData[Slave->PollDataMax - 1].StartAddr = StartAddr;
 	Slave->PollData[Slave->PollDataMax - 1].NumberOfRegister = NumberOfRegister;
 	Slave->PollData[Slave->PollDataMax - 1].BaseAddr = BaseAddr;
+	Slave->PollData[Slave->PollDataMax - 1].PollFunction = PollFunction;
 	
 	return true;
 }
@@ -963,36 +965,6 @@ void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id, 
 	{
 		Slave->NoResponseLimit = NoResponseLimit;
 		Slave->NoResponseCnt = 0;
-	}
-}
-/*********************************************************************************/
-void AvrModbusMasterSetSlavePollFunction(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction)
-{
-	tag_AvrModbusMasterSlaveInfo *Slave = null;
-
-	/*
-		1) 인수
-			- Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-			- Id : Slave의 ID.
-			- PollFunction : 호출 펑션.
-
-		2) 반환
-			- 없음.
-
-		3) 설명
-			- 슬레이브 호출 펑션 변경.
-	*/
-
-	if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || ((PollFunction != AVR_MODBUS_ReadHolding) && (PollFunction != AVR_MODBUS_ReadInput)))
-	{
-		return;
-	}
-
-	Slave = AvrModbusMasterFindSlaveById(Master, Id);
-
-	if(Slave != null)
-	{
-		Slave->PollFunction = PollFunction;
 	}
 }
 /*********************************************************************************/

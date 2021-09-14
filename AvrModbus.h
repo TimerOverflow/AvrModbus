@@ -9,10 +9,15 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE				20200623
+#define AVR_MODBUS_REVISION_DATE				20200703
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+	2020. 07. 03.					- Slave파트 AVR_MODBUS_ReadSerialNumber (0x73)펑션 마스터가 요청하는 길이 부분은 무시하고,
+	Jeong Hyun Gu						연결 되어 있는 프로그램명 문자열 길이로 응답.
+												- Master파트 AvrModbusMasterSetSlavePollFunction() 삭제. 앞으로 PollFunction은 AvrModbusMasterAddSlave(),
+													AvrModbusMasterAddSlavePollData()를 호출할 때 결정하도록 변경.
+
 	2020. 06. 23.					- Slave파트 AVR_MODBUS_ReadSerialNumber (0x73) 펑션 추가.
 	Jeong Hyun Gu
 
@@ -111,7 +116,7 @@
 #define	false		0
 #define	null		0
 
-#define	AVR_MODBUS_MASTER			false
+#define	AVR_MODBUS_MASTER			true
 #define	AVR_MODBUS_SLAVE			true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US							20000
@@ -140,9 +145,9 @@ typedef struct tag_AvrModbusSlaveCtrl
 {
 	struct
 	{
-		tU8 InitGeneral					:		1;
-		tU8 InitCheckOutRange		:		1;
-		tU8 InitUserException		:		1;
+		tU8 InitGeneral						:		1;
+		tU8 InitCheckOutRange			:		1;
+		tU8 InitUserException			:		1;
 		tU8 InitPreUserException	:		1;
 		tU8 InitCustomFrameCheck	:		1;
 		tU8 InitSerialNumber			:		1;
@@ -156,7 +161,7 @@ typedef struct tag_AvrModbusSlaveCtrl
 	tU16	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr);
 	
 	tU8 *BaseAddr;
-	tU8 *SerialNumberAddr;
+	char *SerialNumberAddr;
 	tU16 MapStartAddr;
 }tag_AvrModbusSlaveCtrl;
 
@@ -169,6 +174,7 @@ typedef struct
 	tU16 StartAddr;
 	tU16 NumberOfRegister;
 	tU8 *BaseAddr;
+	enum_AvrModbusFunction PollFunction;
 }tag_AvrModbusMasterSlavePollData;
 
 typedef struct
@@ -178,7 +184,6 @@ typedef struct
 	tU8 NoResponseLimit;
 	tU8 PollDataIndex;
 	tU8 PollDataMax;
-	enum_AvrModbusFunction PollFunction;
 	tag_AvrModbusMasterSlavePollData *PollData;
 }tag_AvrModbusMasterSlaveInfo;
 
@@ -186,10 +191,10 @@ typedef struct
 {
 	struct
 	{
-		tU8 InitGeneral				:		1;
-		tU8 InitRxUserException:		1;
-		tU8 InitComplete				:		1;
-		tU8 PollDataAllocFail	:		1;
+		tU8 InitGeneral						:		1;
+		tU8 InitRxUserException		:		1;
+		tU8 InitComplete					:		1;
+		tU8 PollDataAllocFail			:		1;
 	}Bit;
 
 	tag_AvrUartCtrl *Uart;
@@ -222,7 +227,7 @@ tU8 AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*Us
 tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*PreUserException)(tag_AvrModbusSlaveCtrl *Slave, tU8 *SlaveId));
 tU8 AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, tU16 MapStartAddr);
 tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16	(*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr));
-tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, tU8 *SerialNumberAddr);
+tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNumberAddr);
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId);
 
 #endif
@@ -232,11 +237,10 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId);
 
 tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl *Uart, tU8 MaxSlave, tU32 MasterProcTick_us);
 tU8 AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, tU32 PollDelay_us);
-tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr);
-tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr);
+tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr);
+tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr);
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id);
 void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU8 NoResponseLimit);
-void AvrModbusMasterSetSlavePollFunction(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction);
 tU8 AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*UserException)(tU8 Id));
 
 void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master);
