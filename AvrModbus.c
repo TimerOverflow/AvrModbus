@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20191010)
+#if(AVR_MODBUS_REVISION_DATE != 20200623)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -243,6 +243,46 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 	}
 }
 /*********************************************************************************/
+static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
+{
+	tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
+	tU16 StartAddr, NumberOfPoint, Crc16, i;
+	tU8 *BaseAddr;
+
+	StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+	NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+
+	if(Slave->Bit.InitSerialNumber == false)
+	{
+		ErrorException(Slave, 0x0E);
+	}
+	else if(StartAddr != 0x0F0C)
+	{
+		ErrorException(Slave, 0x0F);
+	}
+	else
+	{
+		NumberOfPoint *= 2;
+		BaseAddr = Slave->SerialNumberAddr;
+		
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);		//Slave Address
+		AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);		//Function
+		AvrUartPutChar(Slave->Uart, NumberOfPoint);		//Byte Count
+	
+		for(i = 0; i < NumberOfPoint; i++)
+		{
+			AvrUartPutChar(Slave->Uart, *(BaseAddr + i));
+		}
+
+		Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+	
+		AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
+		AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
+		AvrUartStartTx(Slave->Uart);
+	}
+}
+/*********************************************************************************/
 tU8 AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Uart, tU8 *BaseAddr, tU32 SlaveProcTick_us)
 {
 	/*
@@ -416,6 +456,32 @@ tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16	(*Cus
 	return Slave->Bit.InitCustomFrameCheck;
 }
 /*********************************************************************************/
+tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, tU8 *SerialNumberAddr)
+{
+	/*
+		1) 인수
+			- Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+			- CustomFrameCheck : 사영자 정의 프레임 에러 검출 함수 주소.
+
+		2) 반환
+			- 0 : 초기화 실패
+			- 1 : 초기화 성공
+
+		3) 설명
+			- 사용자 정의 프레임 에러 검출 함수 연결.
+	*/
+	
+	if(Slave->Bit.InitComplete == false)
+	{
+		return false;
+	}
+
+	Slave->SerialNumberAddr = SerialNumberAddr;
+	Slave->Bit.InitSerialNumber = true;
+
+	return Slave->Bit.InitSerialNumber;
+}
+/*********************************************************************************/
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
 {
 	tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -473,6 +539,10 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
 
 						case	AVR_MODBUS_PresetMultiple	:
 							SlavePresetMultiple(Slave);
+						break;
+						
+						case	AVR_MODBUS_ReadSerialNumber	:
+							SlaveReadSerialNumber(Slave);
 						break;
 
 						default	:
