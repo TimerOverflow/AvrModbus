@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20210318)
+#if(AVR_MODBUS_REVISION_DATE != 20210408)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -928,6 +928,7 @@ tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, enu
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id)
 {
 	tag_AvrModbusMasterSlaveInfo *Slave;
+	tag_AvrModbusMasterSlavePollData *BackupPollData;
 
 	/*
 		1) 인수
@@ -950,8 +951,9 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id)
 
 	if(Slave != null)
 	{
-		free(Slave->PollData);
+		BackupPollData = (tag_AvrModbusMasterSlavePollData *) realloc(Slave->PollData, sizeof(tag_AvrModbusMasterSlavePollData));
 		memset(Slave, 0, sizeof(tag_AvrModbusMasterSlaveInfo));
+		Slave->PollData = BackupPollData;
 		Master->AddedSlave--;
 	}
 }
