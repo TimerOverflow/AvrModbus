@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<project>
+  <fileVersion>2</fileVersion>
+  <fileChecksum>480075977</fileChecksum>
+  <configuration>
+    <name>Debug</name>
+    <outputs>
+      <file>$PROJ_DIR$\crc16.c</file>
+      <file>$PROJ_DIR$\main.c</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrModbus_Master.pbd</file>
+      <file>$TOOLKIT_DIR$\inc\clib\stdlib.h</file>
+      <file>$PROJ_DIR$\AvrUart.c</file>
+      <file>$PROJ_DIR$\..\AvrModbus.c</file>
+      <file>$PROJ_DIR$\AvrUartBaud.c</file>
+      <file>$PROJ_DIR$\Debug\Obj\crc16.pbi</file>
+      <file>$PROJ_DIR$\Debug\Obj\crc16.r90</file>
+      <file>$TOOLKIT_DIR$\inc\iom64.h</file>
+      <file>$PROJ_DIR$\AvrUart.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrModbus.r90</file>
+      <file>$TOOLKIT_DIR$\inc\iomacro.h</file>
+      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
+      <file>$TOOLKIT_DIR$\inc\bitdefinitions\iom64.inc</file>
+      <file>$PROJ_DIR$\..\AvrModbus.h</file>
+      <file>$PROJ_DIR$\AvrUartBaud.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrModbus.pbi</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrUart.r90</file>
+      <file>$TOOLKIT_DIR$\lib\clib\cl3s-ec_mul-sf.r90</file>
+      <file>$PROJ_DIR$\crc16.h</file>
+      <file>$TOOLKIT_DIR$\inc\ina90.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrUart.pbi</file>
+      <file>$PROJ_DIR$\AvrTimer.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrUartBaud.r90</file>
+      <file>$TOOLKIT_DIR$\inc\comp_a90.h</file>
+      <file>$TOOLKIT_DIR$\inc\inavr.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\AvrUartBaud.pbi</file>
+      <file>$TOOLKIT_DIR$\inc\clib\string.h</file>
+      <file>$PROJ_DIR$\Debug\Obj\main.r90</file>
+      <file>$PROJ_DIR$\Debug\Obj\main.pbi</file>
+      <file>$TOOLKIT_DIR$\config\lnkm64s.xcl</file>
+      <file>$TOOLKIT_DIR$\inc\clib\sysmac.h</file>
+      <file>$PROJ_DIR$\Debug\Exe\AvrModbus_Master(AT64).d90</file>
+      <file>$PROJ_DIR$\..\SysTypedef.h</file>
+    </outputs>
+    <file>
+      <name>[ROOT_NODE]</name>
+      <outputs>
+        <tool>
+          <name>XLINK</name>
+          <file> 33</file>
+        </tool>
+      </outputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\crc16.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 8</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 7</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 20 34 21 26 13 25</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\main.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 29</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 30</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 9 12 14 21 26 13 25 15 10 34 16 23</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 9 12 14 21 26 13 25 10 16 23</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Debug\Obj\AvrModbus_Master.pbd</name>
+      <inputs>
+        <tool>
+          <name>BILINK</name>
+          <file> 17 22 27 7 30</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\AvrUart.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 18</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 22</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 28 32 10 34</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 28 32 10 34</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\AvrModbus.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 11</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 17</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 3 32 28 15 10 34 20</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 3 32 28 15</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\AvrUartBaud.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 24</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 27</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 16 34</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 16 34</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Debug\Exe\AvrModbus_Master(AT64).d90</name>
+      <inputs>
+        <tool>
+          <name>XLINK</name>
+          <file> 31 11 18 24 8 29 19</file>
+        </tool>
+      </inputs>
+    </file>
+    <forcedrebuild>
+      <name>[REBUILD_ALL]</name>
+    </forcedrebuild>
+  </configuration>
+  <configuration>
+    <name>Release</name>
+    <outputs>
+      <file>$PROJ_DIR$\crc16.c</file>
+      <file>$PROJ_DIR$\main.c</file>
+      <file>$TOOLKIT_DIR$\inc\clib\stdlib.h</file>
+      <file>$PROJ_DIR$\AvrUart.c</file>
+      <file>$PROJ_DIR$\..\AvrModbus.c</file>
+      <file>$PROJ_DIR$\AvrUartBaud.c</file>
+      <file>$PROJ_DIR$\Release\Obj\main.pbi</file>
+      <file>$PROJ_DIR$\Release\Exe\AvrModbus_Master(AT64).hex</file>
+      <file>$PROJ_DIR$\Release\Obj\crc16.pbi</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrModbus_Master.pbd</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrUartBaud.pbi</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrModbus.pbi</file>
+      <file>$PROJ_DIR$\Release\Obj\main.r90</file>
+      <file>$TOOLKIT_DIR$\inc\iom64.h</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrModbus.r90</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrUart.pbi</file>
+      <file>$PROJ_DIR$\AvrUart.h</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrUartBaud.r90</file>
+      <file>$PROJ_DIR$\Release\Obj\crc16.r90</file>
+      <file>$TOOLKIT_DIR$\inc\iomacro.h</file>
+      <file>$TOOLKIT_DIR$\inc\intrinsics.h</file>
+      <file>$TOOLKIT_DIR$\inc\bitdefinitions\iom64.inc</file>
+      <file>$PROJ_DIR$\..\AvrModbus.h</file>
+      <file>$PROJ_DIR$\Release\Obj\AvrUart.r90</file>
+      <file>$PROJ_DIR$\AvrUartBaud.h</file>
+      <file>$TOOLKIT_DIR$\lib\clib\cl3s-ec_mul-sf.r90</file>
+      <file>$PROJ_DIR$\crc16.h</file>
+      <file>$TOOLKIT_DIR$\inc\ina90.h</file>
+      <file>$PROJ_DIR$\AvrTimer.h</file>
+      <file>$TOOLKIT_DIR$\inc\comp_a90.h</file>
+      <file>$TOOLKIT_DIR$\inc\inavr.h</file>
+      <file>$TOOLKIT_DIR$\inc\clib\string.h</file>
+      <file>$TOOLKIT_DIR$\config\lnkm64s.xcl</file>
+      <file>$TOOLKIT_DIR$\inc\clib\sysmac.h</file>
+      <file>$PROJ_DIR$\..\SysTypedef.h</file>
+    </outputs>
+    <file>
+      <name>[ROOT_NODE]</name>
+      <outputs>
+        <tool>
+          <name>XLINK</name>
+          <file> 7</file>
+        </tool>
+      </outputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\crc16.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 18</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 8</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 26 34 27 30 20 29</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 26 34 27 30 20 29</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\main.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 12</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 6</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 13 19 21 27 30 20 29 22 16 34 24 28</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 13 19 21 27 30 20 29 22 16 34 24 28</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\AvrUart.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 23</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 15</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 31 33 16 34</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 31 33 16 34</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\AvrModbus.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 14</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 11</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 2 33 31 22 16 34 26</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 2 33 31 22</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\AvrUartBaud.c</name>
+      <outputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 17</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 10</file>
+        </tool>
+      </outputs>
+      <inputs>
+        <tool>
+          <name>ICCAVR</name>
+          <file> 24 34</file>
+        </tool>
+        <tool>
+          <name>BICOMP</name>
+          <file> 24 34</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Release\Exe\AvrModbus_Master(AT64).hex</name>
+      <inputs>
+        <tool>
+          <name>XLINK</name>
+          <file> 32 14 23 17 18 12 25</file>
+        </tool>
+      </inputs>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Release\Obj\AvrModbus_Master.pbd</name>
+      <inputs>
+        <tool>
+          <name>BILINK</name>
+          <file> 11 15 10 8 6</file>
+        </tool>
+      </inputs>
+    </file>
+    <forcedrebuild>
+      <name>[REBUILD_ALL]</name>
+    </forcedrebuild>
+  </configuration>
+</project>
+
+

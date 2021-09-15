@@ -139,7 +139,7 @@
 #define false   0
 #define null    0
 
-#define AVR_MODBUS_MASTER      false
+#define AVR_MODBUS_MASTER      true
 #define AVR_MODBUS_SLAVE       true
 
 #define AVR_MODBUS_RECEIVING_DELAY_US              20000
