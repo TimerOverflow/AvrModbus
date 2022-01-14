@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE        20210720
+#define AVR_MODBUS_REVISION_DATE        20220114
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+  2022. 01. 14.          - AvrModbusSlaveProc() error respone 0x03 삭제.
+  Jeong Hyun Gu
+
   2021. 07. 20.          - enum_AvrModbusFunction에 펑션 추가. 기존 펑션 명칭을 모드버스 레퍼런스 데이터시트와 동일하게 변경.
   Jeong Hyun Gu          - AvrModbusMasterAddSlavePollData()의 중복추가 확인 부분 수정.
                          - Master파트 슬레이브 호출 펑션에 따라 수신처리하도록 수정.
