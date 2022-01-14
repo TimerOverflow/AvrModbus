@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20210720)
+#if(AVR_MODBUS_REVISION_DATE != 20220114)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -558,13 +558,6 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
             default  :
               ErrorException(Slave, 1);
             break;
-          }
-        }
-        else
-        {
-          if((RxQue->Buf[1] == AVR_MODBUS_ReadHoldingRegister) || (RxQue->Buf[1] == AVR_MODBUS_PresetSingleRegister) || (RxQue->Buf[1] == AVR_MODBUS_PresetMultipleRegister))
-          {
-            ErrorException(Slave, 3);
           }
         }
       }
