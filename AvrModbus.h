@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE        20220114
+#define AVR_MODBUS_REVISION_DATE        20220209
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+  2022. 02. 09.          - Master 수신로직 개선. 수신 데이터 수 비교 추가 및 1회 폴링에 1회 수신처리하도록 변경.
+  Jeong Hyun Gu          - support legacy define (enum_AvrModbusFunction)
+
   2022. 01. 14.          - AvrModbusSlaveProc() error respone 0x03 삭제.
   Jeong Hyun Gu
 
@@ -165,6 +168,12 @@ typedef enum
   AVR_MODBUS_PresetMultipleRegister = 0x10,
 }enum_AvrModbusFunction;
 
+//support legacy define.
+#define AVR_MODBUS_ReadHolding                    AVR_MODBUS_ReadHoldingRegister
+#define AVR_MODBUS_ReadInput                      AVR_MODBUS_ReadInputRegister
+#define AVR_MODBUS_PresetSingle                   AVR_MODBUS_PresetSingleRegister
+#define AVR_MODBUS_PresetMultipleRegister         AVR_MODBUS_PresetMultipleRegister
+
 /*********************************************************************************/
 /**Struct**/
 
@@ -174,13 +183,13 @@ typedef struct tag_AvrModbusSlaveCtrl
 {
   struct
   {
-    tU8 InitGeneral            :    1;
-    tU8 InitCheckOutRange      :    1;
-    tU8 InitUserException      :    1;
-    tU8 InitPreUserException   :    1;
-    tU8 InitCustomFrameCheck   :    1;
-    tU8 InitSerialNumber       :    1;
-    tU8 InitComplete           :    1;
+    tU8 InitGeneral            : 1;
+    tU8 InitCheckOutRange      : 1;
+    tU8 InitUserException      : 1;
+    tU8 InitPreUserException   : 1;
+    tU8 InitCustomFrameCheck   : 1;
+    tU8 InitSerialNumber       : 1;
+    tU8 InitComplete           : 1;
   }Bit;
 
   tag_AvrUartCtrl *Uart;
@@ -220,13 +229,14 @@ typedef struct
 {
   struct
   {
-    tU8 InitGeneral            :    1;
-    tU8 InitRxUserException    :    1;
-    tU8 InitComplete           :    1;
-    tU8 PollDataAllocFail      :    1;
+    tU8 InitGeneral            : 1;
+    tU8 InitRxUserException    : 1;
+    tU8 InitComplete           : 1;
+    tU8 PollDataAllocFail      : 1;
   }Bit;
 
-  tU8 WriteCmdPending          :    1;
+  tU8 IsWriteCmdPending        : 1;
+  tU8 IsPollingSend            : 1;
 
   tag_AvrUartCtrl *Uart;
 

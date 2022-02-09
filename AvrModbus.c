@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20220114)
+#if(AVR_MODBUS_REVISION_DATE != 20220209)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -654,7 +654,8 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
   {
     Master->SlavePoll->NoResponseCnt++;
   }
-  
+
+  Master->IsPollingSend = true;
   PollData = &Master->SlavePoll->PollData[Master->SlavePoll->PollDataIndex];
 
   AvrUartPutChar(Master->Uart, Master->SlavePoll->Id);
@@ -692,6 +693,30 @@ static void MasterReceiveStatus(tag_AvrModbusMasterSlavePollData *PollData, tag_
   memcpy(PollData->BaseAddr, &RxQue->Buf[3], ByteCount);
 }
 /*********************************************************************************/
+static tU16 GetExpectRxCnt(tag_AvrModbusMasterSlavePollData *PollData)
+{
+  const tU8 HeaderSize = 5; //slave address / function / byte count / crc / crc
+  tU16 Cnt;
+  
+  switch(PollData->PollFunction)
+  {
+    case  AVR_MODBUS_ReadInputStatus  :
+    case  AVR_MODBUS_ReadCoilStatus  :  
+      Cnt = PollData->NumberOfRegister / 8;
+      if(PollData->NumberOfRegister % 8) Cnt++;
+      Cnt += HeaderSize;
+    break;
+    
+    default  :
+    case  AVR_MODBUS_ReadInputRegister  :
+    case  AVR_MODBUS_ReadHoldingRegister  : 
+      Cnt = (PollData->NumberOfRegister * 2) + HeaderSize;
+    break;
+  }
+  
+  return Cnt;
+}
+/*********************************************************************************/
 static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 {
   tU16 Crc16;
@@ -710,10 +735,10 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
       - Slave의 응답을 처리함.
   */
 
-  Slave = AvrModbusMasterFindSlaveById(Master, RxQue->Buf[0]);
+  Slave = Master->SlavePoll;
   PollData = &Slave->PollData[Slave->PollDataIndex];
 
-  if((Slave != null) && (RxQue->Buf[1] == PollData->PollFunction))
+  if((Slave != null) && (Master->IsPollingSend == true) && (RxQue->Buf[1] == PollData->PollFunction) && (GetExpectRxCnt(PollData) == RxQue->Ctr))
   {
     Crc16 = Crc16Check(RxQue->OutPtr, RxQue->Buf, &RxQue->Buf[RxQue->Size - 1], RxQue->Ctr - 2);
 
@@ -730,6 +755,7 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
       }
       
       Slave->NoResponseCnt = 0;
+      Master->IsPollingSend = false;
       if(Master->Bit.InitRxUserException == true)
       {
         Master->UserException(Slave->Id);
@@ -780,7 +806,7 @@ tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl 
   }
   //tag_AvrModbusMasterSlavePollData 동적 할당
   
-  Master->WriteCmdPending = false;
+  Master->IsWriteCmdPending = false;
   Master->Uart = Uart;
   Master->MaxSlave = MaxSlave;
   Master->Tick_us = MasterProcTick_us;
@@ -1065,9 +1091,9 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
     else
     {
       Master->PollCnt = Master->PollDelay;
-      if(Master->WriteCmdPending)
+      if(Master->IsWriteCmdPending)
       {
-        Master->WriteCmdPending = false;
+        Master->IsWriteCmdPending = false;
         AvrUartStartTx(Master->Uart);
       }
       else
@@ -1100,12 +1126,12 @@ tU8 AvrModbusMasterWriteSingle(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, enu
       - 현재 이 함수는 AVR_MODBUS_ForceSingleCoil, AVR_MODBUS_PresetSingleRegister 펑션만 지원한다.
   */
 
-  if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->WriteCmdPending == true) || ((Func != AVR_MODBUS_ForceSingleCoil) && (Func != AVR_MODBUS_PresetSingleRegister)))
+  if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->IsWriteCmdPending == true) || ((Func != AVR_MODBUS_ForceSingleCoil) && (Func != AVR_MODBUS_PresetSingleRegister)))
   {
     return false;
   }
   
-  Master->WriteCmdPending = true;
+  Master->IsWriteCmdPending = true;
   if(Func == AVR_MODBUS_ForceSingleCoil){ PresetData = PresetData ? 0xFF00 : 0x0000; }
 
   AvrUartPutChar(Master->Uart, SlaveId);
@@ -1164,12 +1190,12 @@ tU8 AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, 
       - 인수로 받은 SlaveId에 PresetMultiple 명령을 보냄.
   */
 
-  if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->WriteCmdPending == true))
+  if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->IsWriteCmdPending == true))
   {
     return false;
   }
   
-  Master->WriteCmdPending = true;
+  Master->IsWriteCmdPending = true;
 
   AvrUartPutChar(Master->Uart, SlaveId);
   AvrUartPutChar(Master->Uart, AVR_MODBUS_PresetMultipleRegister);
