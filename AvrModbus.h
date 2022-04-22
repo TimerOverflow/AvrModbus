@@ -9,14 +9,19 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE        20220209
+#define AVR_MODBUS_REVISION_DATE        20220422
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+  2022. 04. 22.          - AvrModbusMasterFindSlaveById() 특정 조건에서 Slave를 반환하지 못 하는 문제 수정.
+  Jeong Hyun Gu          - AvrModbusSlaveProc()는 이제 다음 펑션을 지원. AVR_MODBUS_ReadInputRegister, AVR_MODBUS_ReadCoilStatus,
+                           AVR_MODBUS_ForceSingleCoil, AVR_MODBUS_ReadInputStatus
+                         - AvrModbusSlaveSetQueryResponseInfo() 추가.
+
   2022. 02. 09.          - Master 수신로직 개선. 수신 데이터 수 비교 추가 및 1회 폴링에 1회 수신처리하도록 변경.
   Jeong Hyun Gu          - support legacy define (enum_AvrModbusFunction)
 
-  2022. 01. 14.          - AvrModbusSlaveProc() error respone 0x03 삭제.
+  2022. 01. 14.          - AvrModbusSlaveProc() error Response 0x03 삭제.
   Jeong Hyun Gu
 
   2021. 07. 20.          - enum_AvrModbusFunction에 펑션 추가. 기존 펑션 명칭을 모드버스 레퍼런스 데이터시트와 동일하게 변경.
@@ -81,8 +86,8 @@
 
   2018. 10. 23.          - Master파트 AvrModbusMasterAddSlave()함수에서 중복 ID 검색수량
   Jeong Hyun Gu            tag_AvrModbusMasterCtrl::AddedSlave -> tag_AvrModbusMasterCtrl::MaxSlave 변경.
-                          tag_AvrModbusMasterCtrl::SlaveArray에서 추가된 Slave보다 앞쪽 배열이 비어 있는 경우
-                          중복 추가 되는 현상 수정.
+                           tag_AvrModbusMasterCtrl::SlaveArray에서 추가된 Slave보다 앞쪽 배열이 비어 있는 경우
+                           중복 추가 되는 현상 수정.
                          - Master파트 FindSlaveById()함수에서 지역변수 Slave의 초기 값
                           tag_AvrModbusMasterCtrl::SlaveArray -> tag_AvrModbusMasterCtrl::SlavePoll 변경.
                           tag_AvrModbusMasterCtrl::SlaveArray에서 제거하고자 하는 Slave가 tag_AvrModbusMasterCtrl::AddedSlave
@@ -179,6 +184,12 @@ typedef enum
 
 #if(AVR_MODBUS_SLAVE == true)
 
+typedef struct
+{
+  tU8 *BaseAddr;
+  tU16 MapStartAddr;
+}tag_QueryResponseInfo;
+
 typedef struct tag_AvrModbusSlaveCtrl
 {
   struct
@@ -198,9 +209,12 @@ typedef struct tag_AvrModbusSlaveCtrl
   tU8 (*PreUserException)(struct tag_AvrModbusSlaveCtrl *Slave, tU8 *SlaveId);
   tU16  (*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr);
   
-  tU8 *BaseAddr;
   char *SerialNumberAddr;
-  tU16 MapStartAddr;
+  
+  tag_QueryResponseInfo QR_ReadHoldingRegister;
+  tag_QueryResponseInfo QR_ReadInputRegister;
+  tag_QueryResponseInfo QR_ReadCoilStatus;
+  tag_QueryResponseInfo QR_ReadInputStatus;
 }tag_AvrModbusSlaveCtrl;
 
 #endif
@@ -264,13 +278,15 @@ tU8 AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Ua
 tU8 AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*CheckRange)(tU16 StartAddr, tU16 NumberOfRegister));
 tU8 AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*UserException)(tU16 StartAddr, tU16 NumberOfRegister));
 tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*PreUserException)(tag_AvrModbusSlaveCtrl *Slave, tU8 *SlaveId));
-tU8 AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, tU16 MapStartAddr);
 tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16  (*CustomFrameCheck)(tag_AvrUartRingBuf *Que, tU16 Ctr));
 tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNumberAddr);
+tU8 AvrModbusSlaveSetQueryResponseInfo(tag_AvrModbusSlaveCtrl *Slave, enum_AvrModbusFunction Function, tU8 *BaseAddr, tU16 MapStartAddr);
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId);
 
-#endif
+#define AvrModbusSlaveSetMapStartAddr(SLAVE, START_ADDR)     AvrModbusSlaveSetQueryResponseInfo(SLAVE, AVR_MODBUS_ReadHoldingRegister, (SLAVE)->QR_ReadHoldingRegister.BaseAddr, START_ADDR)
+//support legacy function..
 
+#endif
 
 #if(AVR_MODBUS_MASTER == true)
 

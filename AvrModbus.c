@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20220209)
+#if(AVR_MODBUS_REVISION_DATE != 20220422)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -67,7 +67,7 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, tU8 ErrCode)
   }
 }
 /*********************************************************************************/
-static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
+static void SlaveReadRegisters(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -87,7 +87,7 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
 
   StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
-  MapStartAddr = StartAddr == 0 ? 0 : Slave->MapStartAddr;
+  MapStartAddr = StartAddr == 0 ? 0 : QueryResponseInfo->MapStartAddr;
 
   if(StartAddr < MapStartAddr)
   {
@@ -97,7 +97,7 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
   {
     StartAddr -= MapStartAddr;
     NumberOfPoint *= 2;
-    BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + StartAddr);
+    BaseAddr = (tU8 *) (((tU16 *) QueryResponseInfo->BaseAddr) + StartAddr);
     
     AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);    //Slave Address
     AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);    //Function
@@ -124,7 +124,102 @@ static void SlaveReadHolding(tag_AvrModbusSlaveCtrl *Slave)
   }
 }
 /*********************************************************************************/
-static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
+static void SlaveReadStatus(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
+{
+  tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+  tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
+  tU16 StartAddr, NumberOfPoint, Crc16, i, MapStartAddr;
+  tU8 *BaseAddr;
+  
+  StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+  NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+  MapStartAddr = StartAddr == 0 ? 0 : QueryResponseInfo->MapStartAddr;
+
+  if(StartAddr < MapStartAddr)
+  {
+    ErrorException(Slave, 2);
+  }
+  else
+  {
+    StartAddr -= MapStartAddr;
+    NumberOfPoint = (NumberOfPoint / 8) + ((NumberOfPoint % 8) ? 1 : 0);
+    BaseAddr = (tU8 *) (((tU16 *) QueryResponseInfo->BaseAddr) + StartAddr);
+    
+    AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);    //Slave Address
+    AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);    //Function
+    AvrUartPutChar(Slave->Uart, NumberOfPoint);    //Byte Count
+  
+    for(i = 0; i < NumberOfPoint; i++)
+    {
+      AvrUartPutChar(Slave->Uart, BaseAddr[i]);
+    }
+  
+    if(Slave->Bit.InitCustomFrameCheck)
+    {
+      Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+    }
+    else
+    {
+      Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+    }
+  
+    AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
+    AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
+    AvrUartStartTx(Slave->Uart);
+  }
+}
+/*********************************************************************************/
+static void SlaveForceSingleCoil(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
+{
+  tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
+  tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
+  tU16 RegisterAddr, ForceData, Crc16, Move;
+  tU8 *BaseAddr;
+
+  RegisterAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
+  ForceData = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
+
+  if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true)) || (RegisterAddr < QueryResponseInfo->MapStartAddr))
+  {
+    ErrorException(Slave, 2);
+  }
+  else
+  {
+    Move = RegisterAddr - QueryResponseInfo->MapStartAddr;
+    BaseAddr = QueryResponseInfo->BaseAddr + (Move / 8);
+    *BaseAddr = ForceData ? *BaseAddr | (1 << (Move % 8)) : *BaseAddr & ~(1 << (Move % 8));
+    
+    if(Slave->Bit.InitUserException == true)
+    {
+      Slave->UserException(RegisterAddr, 1);
+    }
+
+    if(RxQue->Buf[0] != 0)
+    {
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[0]);    //Slave Address
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[1]);    //Function
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[2]);    //Register Address Hi
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[3]);    //Register Address Lo
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[4]);    //Preset Data Hi
+      AvrUartPutChar(Slave->Uart, RxQue->Buf[5]);    //Preset Data Lo
+
+      if(Slave->Bit.InitCustomFrameCheck)
+      {
+        Crc16 = Slave->CustomFrameCheck(TxQue, TxQue->Ctr);
+      }
+      else
+      {
+        Crc16 = Crc16Check(TxQue->OutPtr, TxQue->Buf, &TxQue->Buf[TxQue->Size - 1], TxQue->Ctr);
+      }
+
+      AvrUartPutChar(Slave->Uart, (Crc16 >> 8));
+      AvrUartPutChar(Slave->Uart, (Crc16 & 0x00FF));
+      AvrUartStartTx(Slave->Uart);
+    }
+  }
+}
+/*********************************************************************************/
+static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -145,13 +240,13 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
   RegisterAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   PresetData = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
 
-  if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true)) || (RegisterAddr < Slave->MapStartAddr))
+  if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(RegisterAddr, 1) == true)) || (RegisterAddr < QueryResponseInfo->MapStartAddr))
   {
     ErrorException(Slave, 2);
   }
   else
   {
-    BaseAddr = ((tU16 *) Slave->BaseAddr) + (RegisterAddr - Slave->MapStartAddr);
+    BaseAddr = ((tU16 *) QueryResponseInfo->BaseAddr) + (RegisterAddr - QueryResponseInfo->MapStartAddr);
     *BaseAddr = PresetData;
 
     if(Slave->Bit.InitUserException == true)
@@ -184,7 +279,7 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave)
   }
 }
 /*********************************************************************************/
-static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
+static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -204,7 +299,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
 
   StartAddr = (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfRegister = (RxQue->Buf[4] << 8) + RxQue->Buf[5];
-  MapStartAddr = StartAddr == 0 ? 0 : Slave->MapStartAddr;
+  MapStartAddr = StartAddr == 0 ? 0 : QueryResponseInfo->MapStartAddr;
 
   if(((Slave->Bit.InitCheckOutRange == true) && (Slave->CheckOutRange(StartAddr, NumberOfRegister) == true)) || (StartAddr < MapStartAddr))
   {
@@ -214,7 +309,7 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave)
   {
     Length = NumberOfRegister * 2;
     Length = (Length > (Slave->Uart->RxQueue.Size - 9)) ? (Slave->Uart->RxQueue.Size - 9) : Length;
-    BaseAddr = (tU8 *) (((tU16 *) Slave->BaseAddr) + (StartAddr - MapStartAddr));
+    BaseAddr = (tU8 *) (((tU16 *) QueryResponseInfo->BaseAddr) + (StartAddr - MapStartAddr));
 
     for(i = 0; i < Length; i += 2)
     {
@@ -314,8 +409,12 @@ tU8 AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Ua
   if(Uart->Bit.InitComplete == true)
   {
     Slave->Uart = Uart;
-    Slave->BaseAddr = BaseAddr;
-    Slave->MapStartAddr = 200;
+    
+    AvrModbusSlaveSetQueryResponseInfo(Slave, AVR_MODBUS_ReadHoldingRegister, BaseAddr, 200);
+    AvrModbusSlaveSetQueryResponseInfo(Slave, AVR_MODBUS_ReadInputRegister, BaseAddr, 200);
+    AvrModbusSlaveSetQueryResponseInfo(Slave, AVR_MODBUS_ReadCoilStatus, BaseAddr, 200);
+    AvrModbusSlaveSetQueryResponseInfo(Slave, AVR_MODBUS_ReadInputStatus, BaseAddr, 200);
+
     Slave->Uart->ReceivingDelay = AVR_MODBUS_RECEIVING_DELAY_US / SlaveProcTick_us;
     if(Slave->Uart->ReceivingDelay < 2) Slave->Uart->ReceivingDelay = 2;
     AvrUartSetTxEndDelay(Uart, AVR_MODBUS_SLAVE_DEFAULT_TX_END_DELAY, SlaveProcTick_us);
@@ -415,31 +514,6 @@ tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*
   return Slave->Bit.InitPreUserException;
 }
 /*********************************************************************************/
-tU8 AvrModbusSlaveSetMapStartAddr(tag_AvrModbusSlaveCtrl *Slave, tU16 MapStartAddr)
-{
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - MapStartAddr : 모드버스맵상의 시작 주소.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 슬레이브의 모드버스맵 주소상 시작 주소 설정.
-  */
-
-  if(Slave->Bit.InitComplete == false)
-  {
-    return false;
-  }
-
-  Slave->MapStartAddr = MapStartAddr;
-
-  return true;
-}
-/*********************************************************************************/
 tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16  (*CustomFrameCheck)(tag_AvrUartRingBuf *RxQue, tU16 Ctr))
 {
   /*
@@ -492,6 +566,30 @@ tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNu
   return Slave->Bit.InitSerialNumber;
 }
 /*********************************************************************************/
+tU8 AvrModbusSlaveSetQueryResponseInfo(tag_AvrModbusSlaveCtrl *Slave, enum_AvrModbusFunction Function, tU8 *BaseAddr, tU16 MapStartAddr)
+{
+  tag_QueryResponseInfo *pQueryResponseInfo;
+  
+  switch(Function)
+  {
+    case  AVR_MODBUS_PresetSingleRegister :
+    case  AVR_MODBUS_PresetMultipleRegister :
+    case  AVR_MODBUS_ReadHoldingRegister : pQueryResponseInfo = &Slave->QR_ReadHoldingRegister; break;
+    case  AVR_MODBUS_ForceSingleCoil :
+    case  AVR_MODBUS_ReadCoilStatus : pQueryResponseInfo = &Slave->QR_ReadCoilStatus; break;
+    case  AVR_MODBUS_ReadInputStatus : pQueryResponseInfo = &Slave->QR_ReadInputStatus; break;
+    case  AVR_MODBUS_ReadInputRegister : pQueryResponseInfo = &Slave->QR_ReadInputRegister; break;
+      
+    default :
+    case  AVR_MODBUS_ReadSerialNumber : return false;
+  }
+  
+  pQueryResponseInfo->BaseAddr = BaseAddr;
+  pQueryResponseInfo->MapStartAddr = MapStartAddr;
+  
+  return true;
+}
+/*********************************************************************************/
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
 {
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
@@ -539,16 +637,32 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
         {
           switch(RxQue->Buf[1])
           {
+            case  AVR_MODBUS_ReadCoilStatus :
+              SlaveReadStatus(Slave, &Slave->QR_ReadCoilStatus);
+            break;
+            
+            case  AVR_MODBUS_ReadInputStatus  :
+              SlaveReadStatus(Slave, &Slave->QR_ReadInputStatus);
+            break;
+            
             case  AVR_MODBUS_ReadHoldingRegister  :
-              SlaveReadHolding(Slave);
+              SlaveReadRegisters(Slave, &Slave->QR_ReadHoldingRegister);
+            break;
+            
+            case  AVR_MODBUS_ReadInputRegister  :
+              SlaveReadRegisters(Slave, &Slave->QR_ReadInputRegister);
+            break;
+            
+            case  AVR_MODBUS_ForceSingleCoil  :
+              SlaveForceSingleCoil(Slave, &Slave->QR_ReadCoilStatus);
             break;
 
             case  AVR_MODBUS_PresetSingleRegister  :
-              SlavePresetSingle(Slave);
+              SlavePresetSingle(Slave, &Slave->QR_ReadHoldingRegister);
             break;
 
             case  AVR_MODBUS_PresetMultipleRegister  :
-              SlavePresetMultiple(Slave);
+              SlavePresetMultiple(Slave, &Slave->QR_ReadHoldingRegister);
             break;
             
             case  AVR_MODBUS_ReadSerialNumber  :
@@ -1277,7 +1391,7 @@ tag_AvrModbusMasterSlaveInfo* AvrModbusMasterFindSlaveById(tag_AvrModbusMasterCt
     return null;
   }
 
-  for(i = 0; i < Master->AddedSlave; i++)
+  for(i = 0; i < Master->MaxSlave; i++)
   {
     if(Slave->Id == Id)
     {
