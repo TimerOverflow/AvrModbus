@@ -82,7 +82,7 @@ static void SlaveReadRegisters(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseI
       - 없음.
 
     3) 설명
-      - Master의 'ReadHolding' 명령에 대한 처리.
+      - Master의 'Read Holding Registers' / 'Read Input Registers' 명령에 대한 처리.
   */
 
   StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
@@ -131,6 +131,17 @@ static void SlaveReadStatus(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo
   tU16 StartAddr, NumberOfPoint, Crc16, i, MapStartAddr;
   tU8 *BaseAddr;
   
+  /*
+    1) 인수
+      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+    2) 반환
+      - 없음.
+
+    3) 설명
+      - Master의 'Read Coil Status' / 'Read Input Status' 명령에 대한 처리.
+  */
+
   StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
   MapStartAddr = StartAddr == 0 ? 0 : QueryResponseInfo->MapStartAddr;
@@ -175,6 +186,17 @@ static void SlaveForceSingleCoil(tag_AvrModbusSlaveCtrl *Slave, tag_QueryRespons
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 RegisterAddr, ForceData, Crc16, Move;
   tU8 *BaseAddr;
+
+  /*
+    1) 인수
+      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+    2) 반환
+      - 없음.
+
+    3) 설명
+      - Master의 'Force Single Coil' 명령에 대한 처리.
+  */
 
   RegisterAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   ForceData = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
@@ -353,6 +375,18 @@ static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 StartAddr, NumberOfPoint, Crc16, i;
   tU8 *BaseAddr;
+
+  /*
+    1) 인수
+      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+    2) 반환
+      - 없음.
+
+    3) 설명
+      - modbus standard에는 없는 비표준 커맨드 'ReadSerialNumber' 명령에 대한 처리.
+      - tag_AvrModbusSlaveCtrl::AvrModbusSlaveLinkSerialNumber()를 호출하여 일련번호 먼저 추가 필요.
+  */
 
   StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfPoint = strlen(Slave->SerialNumberAddr) / 2;
@@ -569,6 +603,30 @@ tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNu
 tU8 AvrModbusSlaveSetQueryResponseInfo(tag_AvrModbusSlaveCtrl *Slave, enum_AvrModbusFunction Function, tU8 *BaseAddr, tU16 MapStartAddr)
 {
   tag_QueryResponseInfo *pQueryResponseInfo;
+
+  /*
+    1) 인수
+      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+      - Function : 대상 modbus command
+      - BaseAddr : command와 bind 대상 변수 주소.
+      - MapStartAddr : command의 시작 주소.
+
+    2) 반환
+      - 0 : 초기화 실패
+      - 1 : 초기화 성공
+
+    3) 설명
+      - 마스터 query 요청 command의 modbus map start address를 설정하고, 대상 변수(메모리 주소)를 bind한다.
+      - tU16 RegInput[10];
+        AvrModbusSlaveSetQueryResponseInfo(&slave, AVR_MODBUS_ReadInputRegister, (tU8 *) &RegInput, 50);
+        
+        위와 같이 설정하면 AVR_MODBUS_ReadInputRegister 요청에 아래와 같이 응답.
+        50번지 : RegInput[0]
+        51번지 : RegInput[1]
+        52번지 : RegInput[2]
+        ...
+        59번지 : RegInput[9]
+  */
   
   switch(Function)
   {
@@ -790,6 +848,18 @@ static void MasterReceiveRegister(tag_AvrModbusMasterSlavePollData *PollData, ta
 {
   tU16 Length, i, j = 3;
   
+  /*
+    1) 인수
+      - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+      - RxQue : tag_AvrUartRingBuf 타입 인스턴즈 주소.
+
+    2) 반환
+      - 없음.
+
+    3) 설명
+      - Big endian -> Little endian conversion.
+  */
+
   Length = PollData->NumberOfRegister * 2;
   for(i = 0; i < Length; i += 2)
   {
@@ -802,6 +872,18 @@ static void MasterReceiveStatus(tag_AvrModbusMasterSlavePollData *PollData, tag_
 {
   tU8 ByteCount;
   
+  /*
+    1) 인수
+      - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+      - RxQue : tag_AvrUartRingBuf 타입 인스턴즈 주소.
+
+    2) 반환
+      - 없음.
+
+    3) 설명
+      - bit 단위 status command 대한 수신 처리.
+  */
+
   ByteCount = RxQue->Buf[2];
   if(ByteCount > (RxQue->Size - 4)) ByteCount = RxQue->Size - 4;
   memcpy(PollData->BaseAddr, &RxQue->Buf[3], ByteCount);
@@ -812,6 +894,18 @@ static tU16 GetExpectRxCnt(tag_AvrModbusMasterSlavePollData *PollData)
   const tU8 HeaderSize = 5; //slave address / function / byte count / crc / crc
   tU16 Cnt;
   
+  /*
+    1) 인수
+      - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+
+    2) 반환
+      - 예상 수신 데이터 길이(byte)
+
+    3) 설명
+      - 매개 변수 PollData에는 마스터가 호출할 데이터의 길이 정보가 있다. 이 정보를 이용하여
+        마스터가 수신 해야 하는 데이터의 길이를 계산하여 반환한다.
+  */
+
   switch(PollData->PollFunction)
   {
     case  AVR_MODBUS_ReadInputStatus  :
@@ -1184,6 +1278,7 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
 
     3) 설명
       - Master 동작 처리.
+      - 이 함수를 application loop에서 주기적 호출해야 합니다.
   */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
