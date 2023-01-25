@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20220422)
+#if(AVR_MODBUS_REVISION_DATE != 20230125)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
