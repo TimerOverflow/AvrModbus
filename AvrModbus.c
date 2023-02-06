@@ -9,7 +9,7 @@
 #include "AvrModbus.h"
 #include "crc16.h"
 /*********************************************************************************/
-#if(AVR_MODBUS_REVISION_DATE != 20220422)
+#if(AVR_MODBUS_REVISION_DATE != 20230125)
 #error wrong include file. (AvrModbus.h)
 #endif
 /*********************************************************************************/
@@ -18,40 +18,38 @@
 /*********************************************************************************/
 #if(AVR_MODBUS_SLAVE == true)
 
+/*
+  @brief
+    - 'tag_AvrModbusSlaveCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 0  : 초기화 실패.
+    - 1  : 초기화 성공.
+*/
 static tU8 CheckAllOfSlaveInit(tag_AvrModbusSlaveCtrl *Slave)
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 0  : 초기화 실패.
-      - 1  :  초기화 성공.
-
-    3) 설명
-      - 'tag_AvrModbusSlaveCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
-  */
-
   return (Slave->Bit.InitGeneral) ? true : false;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 요청에 문제가 있을 때 지정한 에러코드를 응답함.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - ErrCode : 에러 코드.
+
+  @retval
+    - 없음.
+*/
 static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, tU8 ErrCode)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 Crc16;
-
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - ErrCode : 에러 코드.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Master의 요청에 문제가 있을 때 지정한 에러코드를 응답함.
-  */
 
   if((RxQue->Buf[0] != 0) && (RxQue->Buf[0] != 255))
   {
@@ -67,23 +65,22 @@ static void ErrorException(tag_AvrModbusSlaveCtrl *Slave, tU8 ErrCode)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 'Read Holding Registers' / 'Read Input Registers' 명령에 대한 처리.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlaveReadRegisters(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 StartAddr, NumberOfPoint, Crc16, i, MapStartAddr;
   tU8 *BaseAddr;
-
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Master의 'ReadHolding' 명령에 대한 처리.
-  */
 
   StartAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfPoint = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
@@ -124,6 +121,16 @@ static void SlaveReadRegisters(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseI
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 'Read Coil Status' / 'Read Input Status' 명령에 대한 처리.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlaveReadStatus(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
@@ -169,6 +176,16 @@ static void SlaveReadStatus(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 'Force Single Coil' 명령에 대한 처리.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlaveForceSingleCoil(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
@@ -219,23 +236,22 @@ static void SlaveForceSingleCoil(tag_AvrModbusSlaveCtrl *Slave, tag_QueryRespons
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 'PresetSingle' 명령에 대한 처리.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 RegisterAddr, PresetData, *BaseAddr;
   tU16 Crc16;
-
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Master의 'PresetSingle' 명령에 대한 처리.
-  */
 
   RegisterAddr = (tU16) (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   PresetData = (tU16) (RxQue->Buf[4] << 8) + RxQue->Buf[5];
@@ -279,23 +295,22 @@ static void SlavePresetSingle(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseIn
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 'PresetMultiple' 명령에 대한 처리.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponseInfo *QueryResponseInfo)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 StartAddr, NumberOfRegister, Crc16, Length, MapStartAddr, i, j = 7;
   tU8 *BaseAddr;
-
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Master의 'PresetMultiple' 명령에 대한 처리.
-  */
 
   StartAddr = (RxQue->Buf[2] << 8) + RxQue->Buf[3];
   NumberOfRegister = (RxQue->Buf[4] << 8) + RxQue->Buf[5];
@@ -347,6 +362,17 @@ static void SlavePresetMultiple(tag_AvrModbusSlaveCtrl *Slave, tag_QueryResponse
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - modbus standard에는 없는 비표준 커맨드 'ReadSerialNumber' 명령에 대한 처리.
+    - tag_AvrModbusSlaveCtrl::AvrModbusSlaveLinkSerialNumber()를 호출하여 일련번호 먼저 추가 필요.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
 {
   tag_AvrUartRingBuf *TxQue = &Slave->Uart->TxQueue;
@@ -388,24 +414,23 @@ static void SlaveReadSerialNumber(tag_AvrModbusSlaveCtrl *Slave)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Slave와 Uart 모듈, 데이터를 연결하는 등의 필수 초기화 실행.
+    - 본 함수를 호출하기전 Uart는 선행적으로 초기화가 완료 되어 있어야 함.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - Uart : tag_AvrUartCtrl 인스턴스의 주소.
+    - BaseAddr : Slave와 연결되는 데이터의 주소. Master의 명령을 수행할 때 응답 또는 적용의 대상이 되는 데이터.
+    - SlaveProcTick_us : AvrModbusSlaveProc() 함수를 실행하는 주기.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Uart, tU8 *BaseAddr, tU32 SlaveProcTick_us)
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - Uart : tag_AvrUartCtrl 인스턴스의 주소.
-      - BaseAddr : Slave와 연결되는 데이터의 주소. Master의 명령을 수행할 때 응답 또는 적용의 대상이 되는 데이터.
-      - SlaveProcTick_us : AvrModbusSlaveProc() 함수를 실행하는 주기.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - Slave와 Uart 모듈, 데이터를 연결하는 등의 필수 초기화 실행.
-      - 본 함수를 호출하기전 Uart는 선행적으로 초기화가 완료 되어 있어야 함.
-  */
-
   if(Uart->Bit.InitComplete == true)
   {
     Slave->Uart = Uart;
@@ -427,24 +452,23 @@ tU8 AvrModbusSlaveGeneralInit(tag_AvrModbusSlaveCtrl *Slave, tag_AvrUartCtrl *Ua
   return Slave->Bit.InitGeneral;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 사용자 정의 범위 확인 함수를 Slave에 연결.
+    - 본 함수를 실행하여 범위 확인 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
+    - 범위 확인 함수는 Master가 허용하지 않은 레지스터에 접근하거나 적용을 명령할 경우 에러코드를 응답할 수 있도록 함.
+      함수를 구현할 경우 정상 범위일 때 0, 비정상 범위 일 때에는 1을 응답도록 해야 함.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - CheckOutRange : 사용자 정의 범위 확인 함수의 주소.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*CheckOutRange)(tU16 StartAddr, tU16 NumberOfRegister))
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - CheckOutRange : 사용자 정의 범위 확인 함수의 주소.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 사용자 정의 범위 확인 함수를 Slave에 연결.
-      - 본 함수를 실행하여 범위 확인 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
-      - 범위 확인 함수는 Master가 허용하지 않은 레지스터에 접근하거나 적용을 명령할 경우 에러코드를 응답할 수 있도록 함.
-        함수를 구현할 경우 정상 범위일 때 0, 비정상 범위 일 때에는 1을 응답도록 해야 함.
-  */
-
   if(Slave->Bit.InitComplete == false)
   {
     return false;
@@ -456,24 +480,23 @@ tU8 AvrModbusSlaveLinkCheckRangeFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*CheckO
   return Slave->Bit.InitCheckOutRange;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 사용자 정의 예외처리 함수를 Slave에 연결.
+    - 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
+    - 예외처리 함수는 특정 레지스터에 대한 추가 처리를 가능토록 함. 예를 들어 시간 설정 레지스터에 대한 Master의 요청이 있을 경우
+      RTC 제어 관련 함수를 호출하거나, 에러해제 시 관련 카운트 변수를 초기화 하는 등의 동작을 구현함.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - UserException : 사용자 정의 예외처리 함수의 주소.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*UserException)(tU16 StartAddr, tU16 NumberOfRegister))
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - UserException : 사용자 정의 예외처리 함수의 주소.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 사용자 정의 예외처리 함수를 Slave에 연결.
-      - 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
-      - 예외처리 함수는 특정 레지스터에 대한 추가 처리를 가능토록 함. 예를 들어 시간 설정 레지스터에 대한 Master의 요청이 있을 경우
-        RTC 제어 관련 함수를 호출하거나, 에러해제 시 관련 카운트 변수를 초기화 하는 등의 동작을 구현함.
-  */
-
   if(Slave->Bit.InitComplete == false)
   {
     return false;
@@ -485,24 +508,23 @@ tU8 AvrModbusSlaveLinkUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, void (*Us
   return Slave->Bit.InitUserException;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 사용자 정의 예외처리 함수를 Slave에 연결.
+    - 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
+    - 이 예외처리 함수는 데이터 수신 후 마스터 요청 처리 전 실행하며, 구현한 예외처리 함수에서 0이 아닌 값을 리턴할 경우
+      마스터 요청을 처리 하지 않는다.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - PreUserException : 사용자 정의 사전 예외처리 함수의 주소.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*PreUserException)(struct tag_AvrModbusSlaveCtrl *Slave, tU8 *SlaveId))
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - PreUserException : 사용자 정의 사전 예외처리 함수의 주소.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 사용자 정의 예외처리 함수를 Slave에 연결.
-      - 본 함수를 실행하여 예외처리 함수를 Slave에 연결할지 여부는 필수사항이 아닌 선택 사항.
-      - 이 예외처리 함수는 데이터 수신 후 마스터 요청 처리 전 실행하며, 구현한 예외처리 함수에서 0이 아닌 값을 리턴할 경우
-        마스터 요청을 처리 하지 않는다.
-  */
-
   if(Slave->Bit.InitComplete == false)
   {
     return false;
@@ -514,21 +536,20 @@ tU8 AvrModbusSlaveLinkPreUserExceptionFunc(tag_AvrModbusSlaveCtrl *Slave, tU8 (*
   return Slave->Bit.InitPreUserException;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 사용자 정의 프레임 에러 검출 함수 연결.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - CustomFrameCheck : 사용자 정의 프레임 에러 검출 함수 주소.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16  (*CustomFrameCheck)(tag_AvrUartRingBuf *RxQue, tU16 Ctr))
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - CustomFrameCheck : 사용자 정의 프레임 에러 검출 함수 주소.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 사용자 정의 프레임 에러 검출 함수 연결.
-  */
-  
   if(Slave->Bit.InitComplete == false)
   {
     return false;
@@ -540,21 +561,20 @@ tU8 AvrModbusSlaveLinkCustomFrameCheck(tag_AvrModbusSlaveCtrl *Slave, tU16  (*Cu
   return Slave->Bit.InitCustomFrameCheck;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 본 함수를 호출하여 문자열 연결 후 AVR_MODBUS_ReadSerialNumber(0x73)으로 호출하면 프로그램명 응답.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - SerialNumberAddr : 프로그램명 문자열.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNumberAddr)
 {
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - SerialNumberAddr : 프로그램명 문자열.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - 본 함수를 호출하여 문자열 연결 후 AVR_MODBUS_ReadSerialNumber(0x73)으로 호출하면 프로그램명 응답.
-  */
-  
   if(Slave->Bit.InitComplete == false)
   {
     return false;
@@ -566,10 +586,33 @@ tU8 AvrModbusSlaveLinkSerialNumber(tag_AvrModbusSlaveCtrl *Slave, char *SerialNu
   return Slave->Bit.InitSerialNumber;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 마스터 query 요청 command의 modbus map start address를 설정하고, 대상 변수(메모리 주소)를 bind한다.
+    - tU16 RegInput[10];
+      AvrModbusSlaveSetQueryResponseInfo(&slave, AVR_MODBUS_ReadInputRegister, (tU8 *) &RegInput, 50);
+        
+      위와 같이 설정하면 AVR_MODBUS_ReadInputRegister 요청에 아래와 같이 응답.
+      50번지 : RegInput[0]
+      51번지 : RegInput[1]
+      52번지 : RegInput[2]
+      ...
+      59번지 : RegInput[9]
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - Function : 대상 modbus command
+    - BaseAddr : command와 bind 대상 변수 주소.
+    - MapStartAddr : command의 시작 주소.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusSlaveSetQueryResponseInfo(tag_AvrModbusSlaveCtrl *Slave, enum_AvrModbusFunction Function, tU8 *BaseAddr, tU16 MapStartAddr)
 {
   tag_QueryResponseInfo *pQueryResponseInfo;
-  
+
   switch(Function)
   {
     case  AVR_MODBUS_PresetSingleRegister :
@@ -590,24 +633,23 @@ tU8 AvrModbusSlaveSetQueryResponseInfo(tag_AvrModbusSlaveCtrl *Slave, enum_AvrMo
   return true;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Slave 동작을 처리함.
+    - AvrModbusSlaveGeneralInit() 함수에서 설정한 'SlaveProcTick_us'과 동일한 주기로 본 함수 실행.
+
+  @param
+    - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
+    - SlaveId : Slave의 ID.
+
+  @retval
+    - 없음.
+*/
 void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
 {
   tag_AvrUartRingBuf *RxQue = &Slave->Uart->RxQueue;
   tU16 Crc16;
   tU8 PreException = false;
-
-  /*
-    1) 인수
-      - Slave : tag_AvrModbusSlaveCtrl 인스턴스의 주소.
-      - SlaveId : Slave의 ID.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Slave 동작을 처리함.
-      - AvrModbusSlaveGeneralInit() 함수에서 설정한 'SlaveProcTick_us'과 동일한 주기로 본 함수 실행.
-  */
 
   if(Slave->Bit.InitComplete == false)
   {
@@ -684,41 +726,39 @@ void AvrModbusSlaveProc(tag_AvrModbusSlaveCtrl *Slave, tU8 SlaveId)
 /*********************************************************************************/
 #if(AVR_MODBUS_MASTER == true)
 
+/*
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+
+  @retval
+    - 0  : 초기화 실패.
+    - 1  :  초기화 성공.
+
+  @brief
+    - 'tag_AvrModbusMasterCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
+*/
 static tU8 CheckAllOfMasterInit(tag_AvrModbusMasterCtrl *Master)
 {
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 0  : 초기화 실패.
-      - 1  :  초기화 성공.
-
-    3) 설명
-      - 'tag_AvrModbusMasterCtrl' 인스턴스의 필수 항목 초기화 여부 확인.
-  */
-
   return (Master->Bit.InitGeneral && (Master->Bit.PollDataAllocFail == false)) ? true : false;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 본 함수는 Master에 추가 되어 있는 Slave를 순회하기 위해 구현함.
+    - 인수로 받은 Slave에 다음에 위치한 Slave 주소를 반환함. 예를 들어 총 5개의 Slave가 추가 되어 있을 때 인수로 받은 Slave가
+      3번째라면 4번째 Slave의 주소를 반환함.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Slave : tag_AvrModbusMasterSlaveInfo 인스턴스의 주소.
+
+  @retval
+    - 인수로 받은 Slave와 인접한 다음 Slave의 주소.
+*/
 static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *Master, tag_AvrModbusMasterSlaveInfo *Slave)
 {
   tU8 i = 0;
   tag_AvrModbusMasterSlaveInfo *SlaveTemp = Slave;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Slave : tag_AvrModbusMasterSlaveInfo 인스턴스의 주소.
-
-    2) 반환
-      - 인수로 받은 Slave와 인접한 다음 Slave의 주소.
-
-    3) 설명
-      - 본 함수는 Master에 추가 되어 있는 Slave를 순회하기 위해 구현함.
-      - 인수로 받은 Slave에 다음에 위치한 Slave 주소를 반환함. 예를 들어 총 5개의 Slave가 추가 되어 있을 때 인수로 받은 Slave가
-        3번째라면 4번째 Slave의 주소를 반환함.
-  */
 
   do
   {
@@ -741,22 +781,21 @@ static tag_AvrModbusMasterSlaveInfo* GetAddedSlaveInfo(tag_AvrModbusMasterCtrl *
   return Slave;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Slave Polling을 수행함.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
 {
   tag_AvrUartRingBuf *TxQue = &Master->Uart->TxQueue;
   tag_AvrModbusMasterSlavePollData *PollData;
   tU16 Crc16;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Slave Polling을 수행함.
-  */
 
   if(++Master->SlavePoll->PollDataIndex >= Master->SlavePoll->PollDataMax)
   {
@@ -786,6 +825,17 @@ static void MasterPolling(tag_AvrModbusMasterCtrl *Master)
   AvrUartStartTx(Master->Uart);
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Big endian -> Little endian conversion.
+
+  @param
+    - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+    - RxQue : tag_AvrUartRingBuf 타입 인스턴즈 주소.
+
+  @retval
+    - 없음.
+*/
 static void MasterReceiveRegister(tag_AvrModbusMasterSlavePollData *PollData, tag_AvrUartRingBuf *RxQue)
 {
   tU16 Length, i, j = 3;
@@ -798,6 +848,17 @@ static void MasterReceiveRegister(tag_AvrModbusMasterSlavePollData *PollData, ta
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - bit 단위 status command 대한 수신 처리.
+
+  @param
+    - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+    - RxQue : tag_AvrUartRingBuf 타입 인스턴즈 주소.
+
+  @retval
+    - 없음.
+*/
 static void MasterReceiveStatus(tag_AvrModbusMasterSlavePollData *PollData, tag_AvrUartRingBuf *RxQue)
 {
   tU8 ByteCount;
@@ -807,6 +868,17 @@ static void MasterReceiveStatus(tag_AvrModbusMasterSlavePollData *PollData, tag_
   memcpy(PollData->BaseAddr, &RxQue->Buf[3], ByteCount);
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 매개 변수 PollData에는 마스터가 호출할 데이터의 길이 정보가 있다. 이 정보를 이용하여
+      마스터가 수신 해야 하는 데이터의 길이를 계산하여 반환한다.
+
+  @param
+    - PollData : tag_AvrModbusMasterSlavePollData 타입 인스턴스 주소.
+
+  @retval
+    - 예상 수신 데이터 길이(byte)
+*/
 static tU16 GetExpectRxCnt(tag_AvrModbusMasterSlavePollData *PollData)
 {
   const tU8 HeaderSize = 5; //slave address / function / byte count / crc / crc
@@ -831,23 +903,22 @@ static tU16 GetExpectRxCnt(tag_AvrModbusMasterSlavePollData *PollData)
   return Cnt;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Slave의 응답을 처리함.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
 {
   tU16 Crc16;
   tag_AvrUartRingBuf *RxQue = &Master->Uart->RxQueue;
   tag_AvrModbusMasterSlavePollData *PollData;
   tag_AvrModbusMasterSlaveInfo *Slave;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Slave의 응답을 처리함.
-  */
 
   Slave = Master->SlavePoll;
   PollData = &Slave->PollData[Slave->PollDataIndex];
@@ -878,24 +949,24 @@ static void MasterReceive(tag_AvrModbusMasterCtrl *Master)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master와 관련된 필수 정보들을 초기화 함.
+    - 본 함수를 호출하기전 Uart는 선행적으로 초기화가 완료 되어 있어야 함.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Uart : tag_AvrUartCtrl 인스턴스의 주소.
+    - MaxSlave : 추가할 수 있는 최대 Slave의 수.
+    - MasterProcTick_us : AvrModbusMasterProc() 함수를 실행하는 주기.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl *Uart, tU8 MaxSlave, tU32 MasterProcTick_us)
 {
   tU8 i;
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Uart : tag_AvrUartCtrl 인스턴스의 주소.
-      - MaxSlave : 추가할 수 있는 최대 Slave의 수.
-      - MasterProcTick_us : AvrModbusMasterProc() 함수를 실행하는 주기.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - Master와 관련된 필수 정보들을 초기화 함.
-      - 본 함수를 호출하기전 Uart는 선행적으로 초기화가 완료 되어 있어야 함.
-  */
   
   if((Uart == null) || (Uart->Bit.InitComplete != true))
   {
@@ -934,21 +1005,20 @@ tU8 AvrModbusMasterGeneralInit(tag_AvrModbusMasterCtrl *Master, tag_AvrUartCtrl 
   return Master->Bit.InitGeneral;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master의 Slave Polling 주기 설정.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - PollDelay_us : Master가 Slave를 Polling할 주기.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, tU32 PollDelay_us)
 {
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - PollDelay_us : Master가 Slave를 Polling할 주기.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - Master의 Slave Polling 주기 설정.
-  */
-
   if(Master->Bit.InitComplete == false)
   {
     return false;
@@ -958,26 +1028,25 @@ tU8 AvrModbusMasterSetPollingDelay(tag_AvrModbusMasterCtrl *Master, tU32 PollDel
   return true;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master가 관리할 Slave 추가.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : 추가할 Slave의 ID
+    - StartAddr : 추가할 Slave의 StartAddr
+    - NumberOfRegister : 추가할 Slave의 레지스터 갯수.
+    - BaseAddr : 추가할 Slave와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
+
+  @retval
+    - 0 : 초기화 실패
+    - 1 : 초기화 성공
+*/
 tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
 {
   tU8 i;
   tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : 추가할 Slave의 ID
-      - StartAddr : 추가할 Slave의 StartAddr
-      - NumberOfRegister : 추가할 Slave의 레지스터 갯수.
-      - BaseAddr : 추가할 Slave와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
-
-    2) 반환
-      - 0 : 초기화 실패
-      - 1 : 초기화 성공
-
-    3) 설명
-      - Master가 관리할 Slave 추가.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave >= Master->MaxSlave))
   {
@@ -1015,40 +1084,39 @@ tU8 AvrModbusMasterAddSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrMod
   return false;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 이미 추가 되어 있는 Slave에 PollData 추가.
+    - PollData는 슬레이브 데이터를 비선형적으로 호출할 필요가 있을 때 추가. 예를 들어 200~210번지, 430~450번지와 같이
+      필요한 데이터의 주소가 인접해 있지 않은 경우 PollData를 추가하여 순차 호출.
+    - 추가 하려는 StartAddr가 이미 추가 되어 있는 값과 같다면 중복이므로 처리 하지 않음.
+    - recommend.
+      Slave1 Add.
+      Slave1 PollData Add.
+      Slave2 Add.
+      Slave2 PollData Add.
+    - not recommend.
+      Slave1 Add.
+      Slave2 Add.
+      Slave1 PollData Add.
+      Slave2 PollData Add.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : 추가할 Slave의 ID
+    - StartAddr : 추가할 PollData의 StartAddr
+    - NumberOfRegister : 추가할 PollData의 레지스터 갯수.
+    - BaseAddr : 추가할 PollData와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
+
+  @retval
+    - 0 : 추가 실패
+    - 1 : 추가 성공
+*/
 tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, enum_AvrModbusFunction PollFunction, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
 {
   tU8 i;
   tag_AvrModbusMasterSlaveInfo *Slave = Master->SlaveArray;
   
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : 추가할 Slave의 ID
-      - StartAddr : 추가할 PollData의 StartAddr
-      - NumberOfRegister : 추가할 PollData의 레지스터 갯수.
-      - BaseAddr : 추가할 PollData와 연결할 Data의 주소. Slave가 ReadHolding에 대한 요청을 응답하면 해당 데이터를 BaseAddr에 대입.
-
-    2) 반환
-      - 0 : 추가 실패
-      - 1 : 추가 성공
-
-    3) 설명
-      - 이미 추가 되어 있는 Slave에 PollData 추가.
-      - PollData는 슬레이브 데이터를 비선형적으로 호출할 필요가 있을 때 추가. 예를 들어 200~210번지, 430~450번지와 같이
-        필요한 데이터의 주소가 인접해 있지 않은 경우 PollData를 추가하여 순차 호출.
-      - 추가 하려는 StartAddr가 이미 추가 되어 있는 값과 같다면 중복이므로 처리 하지 않음.
-      - recommend.
-        Slave1 Add.
-        Slave1 PollData Add.
-        Slave2 Add.
-        Slave2 PollData Add.
-      - not recommend.
-        Slave1 Add.
-        Slave2 Add.
-        Slave1 PollData Add.
-        Slave2 PollData Add.
-  */
-
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {
     return false;
@@ -1082,22 +1150,21 @@ tU8 AvrModbusMasterAddSlavePollData(tag_AvrModbusMasterCtrl *Master, tU8 Id, enu
   return true;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave 삭제.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : 삭제할 Slave의 ID
+
+  @retval
+    - 없음.
+*/
 void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id)
 {
   tag_AvrModbusMasterSlaveInfo *Slave;
   tag_AvrModbusMasterSlavePollData *BackupPollData;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : 삭제할 Slave의 ID
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave 삭제.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {
@@ -1115,22 +1182,21 @@ void AvrModbusMasterRemoveSlave(tag_AvrModbusMasterCtrl *Master, tU8 Id)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave의 무응답 횟수 설정.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : Slave의 ID.
+    - NoResponseLimit : 무응답 횟수.
+
+  @retval
+    - 없음.
+*/
 void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id, tU8 NoResponseLimit)
 {
   tag_AvrModbusMasterSlaveInfo *Slave = null;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : Slave의 ID.
-      - NoResponseLimit : 무응답 횟수.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - 인수로 받은 ID와 동일한 Slave를 검색하여 일치하는 Slave의 무응답 횟수 설정.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {
@@ -1146,22 +1212,21 @@ void AvrModbusMasterSetSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id, 
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 사용자 정의 함수 연결.
+    - Slave가 Master 호출에 정상적으로 응답했을 때 데이터 수신 처리 후 본 함수 호출.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - UserException : 사용자 정의 함수의 주소.
+
+  @retval
+    - 0 : 연결 실패
+    - 1 : 연결 성공
+*/
 tU8 AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*UserException)(tU8 Id))
 {
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - UserException : 사용자 정의 함수의 주소.
-
-    2) 반환
-      - 0 : 연결 실패
-      - 1 : 연결 성공
-
-    3) 설명
-      - 사용자 정의 함수 연결.
-      - Slave가 Master 호출에 정상적으로 응답했을 때 데이터 수신 처리 후 본 함수 호출.
-  */
-
   if(Master->Bit.InitComplete == false)
   {
     return false;
@@ -1173,19 +1238,19 @@ tU8 AvrModbusMasterLinkUserException(tag_AvrModbusMasterCtrl *Master, void (*Use
   return Master->Bit.InitRxUserException;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - Master 동작 처리.
+    - 이 함수를 application loop에서 주기적 호출해야 합니다.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+
+  @retval
+    - 없음.
+*/
 void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
 {
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-
-    2) 반환
-      - 없음.
-
-    3) 설명
-      - Master 동작 처리.
-  */
-
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {
     return;
@@ -1218,27 +1283,26 @@ void AvrModbusMasterProc(tag_AvrModbusMasterCtrl *Master)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 SlaveId에 write single 명령을 보냄.
+    - 현재 이 함수는 AVR_MODBUS_ForceSingleCoil, AVR_MODBUS_PresetSingleRegister 펑션만 지원한다.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - SlaveId : 명령을 전달할 Slave의 ID
+    - Func  :명령 펑션타입
+    - RegAddr : write 레지스터의 주소.
+    - PresetData : write 데이터.
+
+  @retval
+    - 0 : 요청 실패
+    - 1 : 요청 성공
+*/
 tU8 AvrModbusMasterWriteSingle(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, enum_AvrModbusFunction Func, tU16 RegAddr, tU16 PresetData)
 {
   tU16 Crc16;
   tag_AvrUartRingBuf *TxQue = &Master->Uart->TxQueue;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - SlaveId : 명령을 전달할 Slave의 ID
-      - Func  :명령 펑션타입
-      - RegAddr : write 레지스터의 주소.
-      - PresetData : write 데이터.
-
-    2) 반환
-      - 0 : 요청 실패
-      - 1 : 요청 성공
-
-    3) 설명
-      - 인수로 받은 SlaveId에 write single 명령을 보냄.
-      - 현재 이 함수는 AVR_MODBUS_ForceSingleCoil, AVR_MODBUS_PresetSingleRegister 펑션만 지원한다.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->IsWriteCmdPending == true) || ((Func != AVR_MODBUS_ForceSingleCoil) && (Func != AVR_MODBUS_PresetSingleRegister)))
   {
@@ -1263,46 +1327,44 @@ tU8 AvrModbusMasterWriteSingle(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, enu
   return true;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 SlaveId에 PresetSingle 명령을 보냄.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - SlaveId : 명령을 전달할 Slave의 ID
+    - RegAddr : write 레지스터의 주소.
+    - PresetData : write 데이터.
+
+  @retval
+    - 0 : 요청 실패
+    - 1 : 요청 성공
+*/
 tU8 AvrModbusMasterPresetSingle(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, tU16 RegAddr, tU16 PresetData)
 {
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - SlaveId : 명령을 전달할 Slave의 ID
-      - RegAddr : write 레지스터의 주소.
-      - PresetData : write 데이터.
-
-    2) 반환
-      - 0 : 요청 실패
-      - 1 : 요청 성공
-
-    3) 설명
-      - 인수로 받은 SlaveId에 PresetSingle 명령을 보냄.
-  */
-  
   return AvrModbusMasterWriteSingle(Master, SlaveId, AVR_MODBUS_PresetSingleRegister, RegAddr, PresetData);
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 SlaveId에 PresetMultiple 명령을 보냄.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - SlaveId : 명령을 전달할 Slave의 ID
+    - StartAddr : 시작 주소.
+    - NumberOfRegister : 레지스터의 갯수.
+    - BaseAddr : PresetMultiple 요청할 데이터 버퍼의 주소.
+
+  @retval
+    - 0 : 요청 실패
+    - 1 : 요청 성공
+*/
 tU8 AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, tU16 StartAddr, tU16 NumberOfRegister, tU8 *BaseAddr)
 {
   tU16 Crc16, i;
   tag_AvrUartRingBuf *TxQue = &Master->Uart->TxQueue;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - SlaveId : 명령을 전달할 Slave의 ID
-      - StartAddr : 시작 주소.
-      - NumberOfRegister : 레지스터의 갯수.
-      - BaseAddr : PresetMultiple 요청할 데이터 버퍼의 주소.
-
-    2) 반환
-      - 0 : 요청 실패
-      - 1 : 요청 성공
-
-    3) 설명
-      - 인수로 받은 SlaveId에 PresetMultiple 명령을 보냄.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0) || (Master->IsWriteCmdPending == true))
   {
@@ -1335,22 +1397,21 @@ tU8 AvrModbusMasterPresetMultiple(tag_AvrModbusMasterCtrl *Master, tU8 SlaveId, 
   return true;
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 인수로 받은 Id와 동일한 Slave 응답 여부.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : 무응답 여부를 확인할 Slave의 ID
+
+  @retval
+    - 0 : Slave 응답 정상
+    - 1 : Slave 무응답
+*/
 tU8 AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id)
 {
   tag_AvrModbusMasterSlaveInfo *Slave;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : 무응답 여부를 확인할 Slave의 ID
-
-    2) 반환
-      - 0 : Slave 응답 정상
-      - 1 : Slave 무응답
-
-    3) 설명
-      - 인수로 받은 Id와 동일한 Slave 응답 여부.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {
@@ -1369,22 +1430,21 @@ tU8 AvrModbusMasterCheckSlaveNoResponse(tag_AvrModbusMasterCtrl *Master, tU8 Id)
   }
 }
 /*********************************************************************************/
+/*
+  @brief
+    - 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
+
+  @param
+    - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
+    - Id : 찾고자 하는 Slave의 ID
+
+  @retval
+    - 인수로 받은 Id에 해당하는 Slave의 주소.
+*/
 tag_AvrModbusMasterSlaveInfo* AvrModbusMasterFindSlaveById(tag_AvrModbusMasterCtrl *Master, tU8 Id)
 {
   tU8 i, Find = false;
   tag_AvrModbusMasterSlaveInfo *Slave = Master->SlavePoll;
-
-  /*
-    1) 인수
-      - Master : tag_AvrModbusMasterCtrl 인스턴스의 주소.
-      - Id : 찾고자 하는 Slave의 ID
-
-    2) 반환
-      - 인수로 받은 Id에 해당하는 Slave의 주소.
-
-    3) 설명
-      - 추가 되어 있는 Slave 중 인수로 받은 ID와 동일한 Slave의 주소를 찾아 반환함.
-  */
 
   if((Master->Bit.InitComplete == false) || (Master->AddedSlave == 0))
   {

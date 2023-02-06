@@ -9,10 +9,13 @@
 /*********************************************************************************/
 #include "AvrUart.h"
 /*********************************************************************************/
-#define AVR_MODBUS_REVISION_DATE        20220422
+#define AVR_MODBUS_REVISION_DATE        20230125
 /*********************************************************************************/
 /** REVISION HISTORY **/
 /*
+  2023. 01. 25.          - 주석 추가.
+  Jeong Hyun Gu
+
   2022. 04. 22.          - AvrModbusMasterFindSlaveById() 특정 조건에서 Slave를 반환하지 못 하는 문제 수정.
   Jeong Hyun Gu          - AvrModbusSlaveProc()는 이제 다음 펑션을 지원. AVR_MODBUS_ReadInputRegister, AVR_MODBUS_ReadCoilStatus,
                            AVR_MODBUS_ForceSingleCoil, AVR_MODBUS_ReadInputStatus
